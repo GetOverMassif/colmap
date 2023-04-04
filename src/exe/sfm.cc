@@ -661,6 +661,7 @@ std::vector<CameraRig> ReadCameraRigConfig(const std::string& rig_config_path,
 
 }  // namespace
 
+// 刚体BA约束
 int RunRigBundleAdjuster(int argc, char** argv) {
   std::string input_path;
   std::string output_path;
