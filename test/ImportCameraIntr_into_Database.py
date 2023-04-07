@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import sys, os
 script_directory = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.dirname(script_directory))
@@ -7,6 +9,18 @@ import os
 import numpy as np
 import sqlite3
 from scripts.python.database import *
+
+def readCamIntrParams(cameraIntr_path):
+    camIntr = {}
+    # print("hello")
+    with open(cameraIntr_path, "r") as f:
+        lines = f.readlines()
+        for line in lines:
+            cam_name, cam_params = \
+                line.split(':')[0], [float(x) for x in line.split(':')[1].split(',')]
+            camIntr[cam_name] = tuple(cam_params)
+            # print(type(camIntr[cam_name][0]))
+    return camIntr
 
 def camTodatabase(database_path, cameraIntr_path):
     camModelDict = {'SIMPLE_PINHOLE': 0,
@@ -30,30 +44,35 @@ def camTodatabase(database_path, cameraIntr_path):
         return
     # Open the database.
     db = COLMAPDatabase.connect(database_path)
+
+    """ 数据库所包含table: cameras, images, keypoints, descriptors, matches, two_view_geometries """
+
     db.create_tables()
-
-    # cameraModelId, width, height, (params ... )
-    model1, width1, height1, params1 = \
-        0, 1024, 768, np.array((1024., 512., 384.))
-    model2, width2, height2, params2 = \
-        2, 1024, 768, np.array((1024., 512., 384., 0.1))
     
-    camera_id1 = db.add_camera(model1, width1, height1, params1)
-    camera_id2 = db.add_camera(model2, width2, height2, params2)
+    camIntr = readCamIntrParams(cameraIntr_path)
 
-    image_id1 = db.add_image("image1.png", camera_id1)
-    # image_id2 = db.add_image("image2.png", camera_id1)
-    # image_id3 = db.add_image("image3.png", camera_id2)
-    # image_id4 = db.add_image("image4.png", camera_id2)
+    cam_info_pairs = db.get_imageCamerasId()
+
+    for camera_id in cam_info_pairs:
+        model, params = 0, np.array(camIntr[cam_info_pairs[camera_id]])
+        db.update_camera(camera_id, model, params, prior_focal_length=True)
 
     db.commit()
+
+    db.show_cameras()
 
     db.close()
 
 if __name__ == "__main__":
-    data_path = f"/home/nio/文档/colmap/test/data"
-    database_path = f"{data_path}/database.db"
-    cameraIntr_path = f"{data_path}/intr_params.txt"
+    print(f"{'='*78}\nExhaustive feature matching\n{'='*78}\n")
+    parser = argparse.ArgumentParser(description='需要传入一个database文件路径和一个相机内参文件路径')
+    parser.add_argument('database_dir', type=str, help='database文件路径')
+    parser.add_argument('cameraIntr_dir', type=str, help='相机内参文件路径')
+    args = parser.parse_args()
+
+    # database_dir = f"/home/nio/data/colmap/NIO_data/20211221T165619_8N1800__1640077220.000000__1640077240.000000/0/new_ws"
+    # cameraIntr_dir = f"/home/nio/data/save_masks/20211221T165619_8N1800__1640077220.000000__1640077240.000000"
+
+    database_path = f"{args.database_dir}/database.db"
+    cameraIntr_path = f"{args.cameraIntr_dir}/intr_params.txt"
     camTodatabase(database_path, cameraIntr_path)
-
-

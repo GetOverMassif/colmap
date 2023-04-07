@@ -34,6 +34,7 @@
 import sys
 import sqlite3
 import numpy as np
+from prettytable import PrettyTable
 
 
 IS_PYTHON3 = sys.version_info[0] >= 3
@@ -230,7 +231,40 @@ class COLMAPDatabase(sqlite3.Connection):
             (pair_id,) + matches.shape + (array_to_blob(matches), config,
              array_to_blob(F), array_to_blob(E), array_to_blob(H),
              array_to_blob(qvec), array_to_blob(tvec)))
+    
+    """ new add by jian.li """
+    def show_images(self):
+        cursor = self.execute("SELECT * FROM images")
+        table = PrettyTable(["image_id","name","camera_id","qw","qx","qy","qz","tx","ty","tz"])
+        for row in cursor:
+            table.add_row([row[0],row[1],row[2],row[3],row[4],row[5],row[6],row[7],row[8],row[9]])
+        print(table)
 
+    def show_cameras(self):
+        cursor = self.execute("SELECT * FROM cameras")
+        table = PrettyTable(["camera_id","model","width","height","params","prior_focal_length"])
+        for row in cursor:
+            array = np.frombuffer(row[4], dtype = np.float64)
+            table.add_row([row[0],row[1],row[2],row[3],str(array),row[5]])
+        print(table)
+    
+    def update_camera(self, camera_id, model, params,
+                   prior_focal_length=False):
+        params = np.asarray(params, np.float64)
+        cursor = self.execute(
+            "UPDATE cameras SET model=?, params=?, prior_focal_length=? \
+                WHERE camera_id = ?",
+            (model, array_to_blob(params), prior_focal_length, camera_id))
+    
+    def get_imageCamerasId(self):
+        cam_info_pairs = {}
+        cursor = self.execute("SELECT * FROM images")
+        for row in cursor:
+            cam_name = row[1].split('/')[0].split('_')[0]
+            cam_model = row[2]
+            if cam_model not in cam_info_pairs:
+                cam_info_pairs[cam_model] = cam_name
+        return cam_info_pairs
 
 def example_usage():
     import os
