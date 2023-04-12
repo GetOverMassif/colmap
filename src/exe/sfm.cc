@@ -583,9 +583,11 @@ std::vector<CameraRig> ReadCameraRigConfig(const std::string& rig_config_path,
   boost::property_tree::read_json(rig_config_path.c_str(), pt);
 
   std::vector<CameraRig> camera_rigs;
+  int cnt = 1;
   for (const auto& rig_config : pt) {
     CameraRig camera_rig;
-
+    std::cout << "cnt = " << cnt << std::endl;
+    cnt += 1;
     std::vector<std::string> image_prefixes;
     for (const auto& camera : rig_config.second.get_child("cameras")) {
       const int camera_id = camera.second.get<int>("camera_id");
@@ -610,7 +612,7 @@ std::vector<CameraRig> ReadCameraRigConfig(const std::string& rig_config_path,
       } else {
         estimate_rig_relative_poses = true;
       }
-
+      std::cout << "add camera : " << camera_id << std::endl;
       camera_rig.AddCamera(camera_id, rel_qvec, rel_tvec);
     }
 

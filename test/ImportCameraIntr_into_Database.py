@@ -64,7 +64,7 @@ def camTodatabase(database_path, cameraIntr_path):
     db.close()
 
 if __name__ == "__main__":
-    print(f"{'='*78}\nExhaustive feature matching\n{'='*78}\n")
+    print(f"{'='*78}\nImport CameraIntr into Database\n{'='*78}\n")
     parser = argparse.ArgumentParser(description='需要传入一个database文件路径和一个相机内参文件路径')
     parser.add_argument('database_dir', type=str, help='database文件路径')
     parser.add_argument('cameraIntr_dir', type=str, help='相机内参文件路径')

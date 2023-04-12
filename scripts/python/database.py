@@ -247,7 +247,19 @@ class COLMAPDatabase(sqlite3.Connection):
             array = np.frombuffer(row[4], dtype = np.float64)
             table.add_row([row[0],row[1],row[2],row[3],str(array),row[5]])
         print(table)
-    
+
+    def show_two_view_geometries(self):
+        cursor = self.execute("SELECT * FROM two_view_geometries")
+        table = PrettyTable(["image_id1","model_id2","match.shape"])
+        cnt = 0
+        for row in cursor:
+            img1, img2 = pair_id_to_image_ids(row[0])
+            table.add_row([int(img1),int(img2),(row[1],row[2])])
+            if row[1] > 0:
+                cnt += 1
+        print(table)
+        print(f"num_two_view_geometries = {cnt}")
+
     def update_camera(self, camera_id, model, params,
                    prior_focal_length=False):
         params = np.asarray(params, np.float64)
@@ -264,7 +276,28 @@ class COLMAPDatabase(sqlite3.Connection):
             cam_model = row[2]
             if cam_model not in cam_info_pairs:
                 cam_info_pairs[cam_model] = cam_name
+                print(f"cam_info_pairs[{cam_model}] = {cam_name}")
         return cam_info_pairs
+    
+    def get_ImageCam_pairs(self):
+        image_cam_pairs = {}
+        cursor = self.execute("SELECT * FROM images")
+        for row in cursor:
+            # {image_id: [stamp, cam]}
+            image_name = row[1]
+            cam = image_name.split("/")[0].split("_")[0]
+            stamp = image_name.split("/")[1][:-4]
+            image_cam_pairs[row[0]] = [stamp, cam]
+        return image_cam_pairs
+
+    def get_two_view_geometries(self):
+        matched_pairs = []
+        cursor = self.execute("SELECT * FROM two_view_geometries")
+        for row in cursor:
+            img1, img2 = pair_id_to_image_ids(row[0])
+            if row[1] > 0:
+                matched_pairs.append([img1, img2])
+        return matched_pairs
 
 def example_usage():
     import os

@@ -113,10 +113,9 @@ def draw_camera(K, R, t, w, h,
 
 
 
-model_path1 = f"/home/nio/data/colmap/official_dataset/test4/dense/dense"
-model_path2 = f"/home/nio/data/colmap/official_dataset/test4/dense/dense"
+model_path = f"/home/nio/data/colmap/NIO_data/20211221T165619_8N1800__1640077220.000000__1640077240.000000/0/dense/dense"
 
-cameras, images, points3D = read_model(model_path1)
+cameras, images, points3D = read_model(model_path)
 
 """ 创建窗口 """
 vis = open3d.visualization.VisualizerWithKeyCallback()
@@ -144,8 +143,8 @@ pcd.points = open3d.utility.Vector3dVector(xyz)
 pcd.colors = open3d.utility.Vector3dVector(rgb)
 
 """ 显示图像文件 """
-images_file = f"{model_path2}/images.bin"
-cameras_file = f"{model_path2}/cameras.bin"
+images_file = f"{model_path}/images.bin"
+cameras_file = f"{model_path}/cameras.bin"
 images = read_images_binary(images_file)
 cameras = read_cameras_binary(cameras_file)
 
@@ -155,3 +154,9 @@ add_cameras(vis, images, cameras)
 
 vis.run()
 vis.destroy_window()
+
+
+colmap mapper --image_path /path/to/images --input_path matches.bin --output_path dense.ply --dense_stereo_method PATCH_MATCH_STEREO --PatchMatchStereo.geom_consistency true --PatchMatchStereo.min_triangulation_angle 1.0
+colmap image_undistorter --image_path /path/to/images --input_path dense.ply --output_path dense_undistorted.ply
+colmap patch_match_stereo --workspace_path /path/to/workspace --workspace_format COLMAP --PatchMatchStereo.geom_consistency true
+colmap

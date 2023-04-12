@@ -48,6 +48,7 @@ bool CameraRig::HasCamera(const camera_t camera_id) const {
 camera_t CameraRig::RefCameraId() const { return ref_camera_id_; }
 
 void CameraRig::SetRefCameraId(const camera_t camera_id) {
+  std::cout << "RefCameraId = " << camera_id << std::endl;
   CHECK(HasCamera(camera_id));
   ref_camera_id_ = camera_id;
 }

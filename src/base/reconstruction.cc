@@ -1756,7 +1756,7 @@ void Reconstruction::ReadPoints3DText(const std::string& path) {
 void Reconstruction::ReadCamerasBinary(const std::string& path) {
   std::ifstream file(path, std::ios::binary);
   CHECK(file.is_open()) << path;
-
+  
   const size_t num_cameras = ReadBinaryLittleEndian<uint64_t>(&file);
   for (size_t i = 0; i < num_cameras; ++i) {
     class Camera camera;
