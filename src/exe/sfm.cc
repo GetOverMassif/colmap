@@ -500,6 +500,8 @@ namespace {
 // Read the configuration of the camera rigs from a JSON file. The input images
 // of a camera rig must be named consistently to assign them to the appropriate
 // camera rig and the respective snapshots.
+// 
+// rel_qvec = [qw,qx,qy,qz]
 //
 // An example configuration of a single camera rig:
 // [
@@ -576,6 +578,7 @@ namespace {
 //            frame002.png
 //            ...
 //
+// TODO:【ReadCameraRigConfig】
 std::vector<CameraRig> ReadCameraRigConfig(const std::string& rig_config_path,
                                            const Reconstruction& reconstruction,
                                            bool estimate_rig_relative_poses) {
@@ -583,11 +586,9 @@ std::vector<CameraRig> ReadCameraRigConfig(const std::string& rig_config_path,
   boost::property_tree::read_json(rig_config_path.c_str(), pt);
 
   std::vector<CameraRig> camera_rigs;
-  int cnt = 1;
   for (const auto& rig_config : pt) {
+    std::cout << "rig_config ref = " << rig_config.second.get<int>("ref_camera_id") << std::endl;
     CameraRig camera_rig;
-    std::cout << "cnt = " << cnt << std::endl;
-    cnt += 1;
     std::vector<std::string> image_prefixes;
     for (const auto& camera : rig_config.second.get_child("cameras")) {
       const int camera_id = camera.second.get<int>("camera_id");
@@ -612,7 +613,7 @@ std::vector<CameraRig> ReadCameraRigConfig(const std::string& rig_config_path,
       } else {
         estimate_rig_relative_poses = true;
       }
-      std::cout << "add camera : " << camera_id << std::endl;
+      std::cout << "  add camera_id " << camera_id << std::endl;
       camera_rig.AddCamera(camera_id, rel_qvec, rel_tvec);
     }
 
@@ -620,11 +621,13 @@ std::vector<CameraRig> ReadCameraRigConfig(const std::string& rig_config_path,
 
     std::unordered_map<std::string, std::vector<image_t>> snapshots;
     for (const auto image_id : reconstruction.RegImageIds()) {
+      // std::cout << "reconstruction.RegImageIds() : " << image_id << std::endl;
       const auto& image = reconstruction.Image(image_id);
       for (const auto& image_prefix : image_prefixes) {
         if (StringContains(image.Name(), image_prefix)) {
           const std::string image_suffix =
               StringGetAfter(image.Name(), image_prefix);
+          // std::cout << "image_suffix = " << image_suffix << std::endl;
           snapshots[image_suffix].push_back(image_id);
         }
       }
@@ -641,6 +644,13 @@ std::vector<CameraRig> ReadCameraRigConfig(const std::string& rig_config_path,
 
       if (has_ref_camera) {
         camera_rig.AddSnapshot(snapshot.second);
+        // std::cout << snapshot.first << " : ";t
+        // for (const auto image_id : snapshot.second)
+        // {
+        //   const auto& image = reconstruction.Image(image_id);
+        //   std::cout << image.CameraId() << ",";
+        // }
+        // std::cout << std::endl;
       }
     }
 
@@ -654,7 +664,6 @@ std::vector<CameraRig> ReadCameraRigConfig(const std::string& rig_config_path,
         return std::vector<CameraRig>();
       }
     }
-
     camera_rigs.push_back(camera_rig);
   }
 
@@ -664,11 +673,15 @@ std::vector<CameraRig> ReadCameraRigConfig(const std::string& rig_config_path,
 }  // namespace
 
 // 刚体BA约束
+// TODO:【RunRigBundleAdjuster】
 int RunRigBundleAdjuster(int argc, char** argv) {
   std::string input_path;
   std::string output_path;
   std::string rig_config_path;
-  bool estimate_rig_relative_poses = true;
+  // bool estimate_rig_relative_poses = true;
+  bool estimate_rig_relative_poses = false;
+
+  std::cout << "estimate_rig_relative_poses = " << estimate_rig_relative_poses << std::endl;
 
   RigBundleAdjuster::Options rig_ba_options;
 

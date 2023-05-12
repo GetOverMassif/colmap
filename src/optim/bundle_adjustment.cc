@@ -555,7 +555,9 @@ bool RigBundleAdjuster::Solve(Reconstruction* reconstruction,
     }
 
     for (const auto& snapshot : camera_rig.Snapshots()) {
+      // std::cout << "snap: ";
       for (const auto& image_id : snapshot) {
+        // std::cout << 
         CHECK_EQ(image_id_to_camera_rig_.count(image_id), 0)
             << "Image must not be part of multiple camera rigs";
         image_id_to_camera_rig_.emplace(image_id, &camera_rig);
@@ -599,6 +601,7 @@ bool RigBundleAdjuster::Solve(Reconstruction* reconstruction,
   std::string solver_error;
   CHECK(solver_options.IsValid(&solver_error)) << solver_error;
 
+  std::cout << "problem_->NumResiduals() = " << problem_->NumResiduals() << std::endl;
   ceres::Solve(solver_options, problem_.get(), &summary_);
 
   if (solver_options.minimizer_progress_to_stdout) {
@@ -609,6 +612,21 @@ bool RigBundleAdjuster::Solve(Reconstruction* reconstruction,
     PrintHeading2("Rig Bundle adjustment report");
     PrintSolverSummary(summary_);
   }
+
+  // // New add start
+  // std::cout << "problem_->NumResiduals() = " << problem_->NumResiduals() << std::endl;
+  // ceres::Solve(solver_options, problem_.get(), &summary_);
+
+  // if (solver_options.minimizer_progress_to_stdout) {
+  //   std::cout << std::endl;
+  // }
+
+  // if (options_.print_summary) {
+  //   PrintHeading2("Rig Bundle adjustment report");
+  //   PrintSolverSummary(summary_);
+  // }
+
+  // // New add end
 
   TearDown(reconstruction, *camera_rigs);
 
@@ -697,6 +715,10 @@ void RigBundleAdjuster::AddImageToProblem(const image_t image_id,
     qvec_data = image.Qvec().data();
     tvec_data = image.Tvec().data();
   }
+
+  // std::cout << "ImageId = " << image_id << std::endl;
+  // printf("q:%.4f,%.4f,%.4f,%.4f\n", qvec_data[0], qvec_data[1], qvec_data[2], qvec_data[3]);
+  // printf("t:%.4f,%.4f,%.4f\n\n", tvec_data[0], tvec_data[1], tvec_data[2]);
 
   // Collect cameras for final parameterization.
   CHECK(image.HasCamera());
@@ -797,7 +819,7 @@ void RigBundleAdjuster::AddImageToProblem(const image_t image_id,
 
     // Set pose parameterization.
     if (!constant_pose && constant_tvec) {
-      const std::vector<int>& constant_tvec_idxs =
+      const std::vector<int>& constant_tvec_idxs = 
           config_.ConstantTvec(image_id);
       SetSubsetManifold(3, constant_tvec_idxs, problem_.get(), tvec_data);
     }

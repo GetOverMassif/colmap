@@ -48,9 +48,9 @@ bool CameraRig::HasCamera(const camera_t camera_id) const {
 camera_t CameraRig::RefCameraId() const { return ref_camera_id_; }
 
 void CameraRig::SetRefCameraId(const camera_t camera_id) {
-  std::cout << "RefCameraId = " << camera_id << std::endl;
   CHECK(HasCamera(camera_id));
   ref_camera_id_ = camera_id;
+  std::cout << "rig_camera.first = " << std::endl;
 }
 
 std::vector<camera_t> CameraRig::GetCameraIds() const {
@@ -84,9 +84,11 @@ void CameraRig::AddSnapshot(const std::vector<image_t>& image_ids) {
   snapshots_.push_back(image_ids);
 }
 
+// TODO:【Check】
 void CameraRig::Check(const Reconstruction& reconstruction) const {
   CHECK(HasCamera(ref_camera_id_));
 
+  // TODO:【reconstruction.ExistsCamera】
   for (const auto& rig_camera : rig_cameras_) {
     CHECK(reconstruction.ExistsCamera(rig_camera.first));
   }

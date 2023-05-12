@@ -729,7 +729,7 @@ double Reconstruction::ComputeMeanReprojectionError() const {
     return error_sum / num_valid_errors;
   }
 }
-
+// TODO:【Reconstruction::Read】
 void Reconstruction::Read(const std::string& path) {
   if (ExistsFile(JoinPaths(path, "cameras.bin")) &&
       ExistsFile(JoinPaths(path, "images.bin")) &&
@@ -1752,7 +1752,7 @@ void Reconstruction::ReadPoints3DText(const std::string& path) {
     points3D_.emplace(point3D_id, point3D);
   }
 }
-
+// TODO:【Reconstruction::ReadCamerasBinary】
 void Reconstruction::ReadCamerasBinary(const std::string& path) {
   std::ifstream file(path, std::ios::binary);
   CHECK(file.is_open()) << path;
@@ -1766,6 +1766,7 @@ void Reconstruction::ReadCamerasBinary(const std::string& path) {
     camera.SetHeight(ReadBinaryLittleEndian<uint64_t>(&file));
     ReadBinaryLittleEndian<double>(&file, &camera.Params());
     CHECK(camera.VerifyParams());
+    std::cout << "Reconstruction add camera : " << camera.CameraId() << std::endl;
     cameras_.emplace(camera.CameraId(), camera);
   }
 }
