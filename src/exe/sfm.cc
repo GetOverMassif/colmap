@@ -544,7 +544,12 @@ namespace {
 // coordinates from rig to camera coordinate space. If the relative extrinsics
 // are not provided then they are automatically inferred from the
 // reconstruction.
-//
+
+// "camera_id" 和 "image_prefix" 都是需要的，其中 "rel_tvec" 和 "rel_qvec" 是可选的，
+//    指定了 camera rig 中的相对外参，形式是一个平移向量和一个旋转四元数.
+// 相对外参 rel_qvec and rel_tvec 将坐标从 rig坐标系 变换到 camera 坐标系.
+// 如果相对外参未提供，将从reconstruction 中自动推断。
+
 // This file specifies the configuration for a single camera rig and that you
 // could potentially define multiple camera rigs. The rig is composed of 4
 // cameras: all images of the first camera must have "left1_image" as a name
@@ -684,6 +689,8 @@ int RunRigBundleAdjuster(int argc, char** argv) {
   std::cout << "estimate_rig_relative_poses = " << estimate_rig_relative_poses << std::endl;
 
   RigBundleAdjuster::Options rig_ba_options;
+
+  std::cout << "rig_ba_options.refine_relative_poses = " << rig_ba_options.refine_relative_poses << std::endl;
 
   OptionManager options;
   options.AddRequiredOption("input_path", &input_path);

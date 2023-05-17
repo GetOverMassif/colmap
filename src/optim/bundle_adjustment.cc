@@ -540,11 +540,13 @@ RigBundleAdjuster::RigBundleAdjuster(const BundleAdjustmentOptions& options,
 
 bool RigBundleAdjuster::Solve(Reconstruction* reconstruction,
                               std::vector<CameraRig>* camera_rigs) {
+  // 检查模型,相机外参,problem_等
   CHECK_NOTNULL(reconstruction);
   CHECK_NOTNULL(camera_rigs);
   CHECK(!problem_) << "Cannot use the same BundleAdjuster multiple times";
 
   // Check the validity of the provided camera rigs.
+  // 检查所提供相机刚体外参的合理性
   std::unordered_set<camera_t> rig_camera_ids;
   for (auto& camera_rig : *camera_rigs) {
     camera_rig.Check(*reconstruction);
@@ -638,6 +640,12 @@ void RigBundleAdjuster::SetUp(Reconstruction* reconstruction,
                               ceres::LossFunction* loss_function) {
   ComputeCameraRigPoses(*reconstruction, *camera_rigs);
 
+  std::cout << "All images: ";
+  for (const image_t image_id : config_.Images()) {
+    std::cout << image_id << ", ";
+  }
+  std::cout <<std::endl;
+
   for (const image_t image_id : config_.Images()) {
     AddImageToProblem(image_id, reconstruction, camera_rigs, loss_function);
   }
@@ -671,15 +679,17 @@ void RigBundleAdjuster::AddImageToProblem(const image_t image_id,
                                           Reconstruction* reconstruction,
                                           std::vector<CameraRig>* camera_rigs,
                                           ceres::LossFunction* loss_function) {
+  // 计算最大重投影误差平方
   const double max_squared_reproj_error =
       rig_options_.max_reproj_error * rig_options_.max_reproj_error;
 
+  // 获取图像及相机，查看该图像是否有常值位姿(camera_rig中的图像不能有常值位姿)
   Image& image = reconstruction->Image(image_id);
   Camera& camera = reconstruction->Camera(image.CameraId());
-
   const bool constant_pose = config_.HasConstantPose(image_id);
   const bool constant_tvec = config_.HasConstantTvec(image_id);
 
+  // 创建 double * 类型的位姿、刚体位姿、相机参数等数据，以及相机rig，rig重投影矩阵等
   double* qvec_data = nullptr;
   double* tvec_data = nullptr;
   double* rig_qvec_data = nullptr;
@@ -688,11 +698,14 @@ void RigBundleAdjuster::AddImageToProblem(const image_t image_id,
   CameraRig* camera_rig = nullptr;
   Eigen::Matrix3x4d rig_proj_matrix = Eigen::Matrix3x4d::Zero();
 
+  // 首先判断 image_id 是否属于某个 camera_rig， 如果不属于，可以直接设置单位值
   if (image_id_to_camera_rig_.count(image_id) > 0) {
     CHECK(!constant_pose)
         << "Images contained in a camera rig must not have constant pose";
     CHECK(!constant_tvec)
         << "Images contained in a camera rig must not have constant tvec";
+
+    // 获取 rig 的位姿及图像对应 cam_id 的相对位姿
     camera_rig = image_id_to_camera_rig_.at(image_id);
     rig_qvec_data = image_id_to_rig_qvec_.at(image_id)->data();
     rig_tvec_data = image_id_to_rig_tvec_.at(image_id)->data();
@@ -701,6 +714,7 @@ void RigBundleAdjuster::AddImageToProblem(const image_t image_id,
 
     // Concatenate the absolute pose of the rig and the relative pose the camera
     // within the rig to detect outlier observations.
+    // 将rig的绝对位姿和相机的相对位姿进行合并，以检测离群观测。
     Eigen::Vector4d rig_concat_qvec;
     Eigen::Vector3d rig_concat_tvec;
     ConcatenatePoses(*image_id_to_rig_qvec_.at(image_id),
@@ -716,26 +730,32 @@ void RigBundleAdjuster::AddImageToProblem(const image_t image_id,
     tvec_data = image.Tvec().data();
   }
 
-  // std::cout << "ImageId = " << image_id << std::endl;
-  // printf("q:%.4f,%.4f,%.4f,%.4f\n", qvec_data[0], qvec_data[1], qvec_data[2], qvec_data[3]);
-  // printf("t:%.4f,%.4f,%.4f\n\n", tvec_data[0], tvec_data[1], tvec_data[2]);
-
   // Collect cameras for final parameterization.
+  // 收集用于最终参数化的相机(id)
   CHECK(image.HasCamera());
   camera_ids_.insert(image.CameraId());
 
   // The number of added observations for the current image.
+  // 统计当前图像中添加的观测数
   size_t num_observations = 0;
 
   // Add residuals to bundle adjustment problem.
+  // 将残差添加到BA优化问题
+  
+  // 遍历当前图像的2D点，找出其中有对应3D点的
+  bool everInRig = false;
   for (const Point2D& point2D : image.Points2D()) {
     if (!point2D.HasPoint3D()) {
       continue;
     }
 
     Point3D& point3D = reconstruction->Point3D(point2D.Point3DId());
+
+    // 确保3D点不止被观测一次
     assert(point3D.Track().Length() > 1);
 
+    // 如果有rig且经过重投影后发现误差较大，则跳过该点
+    // TODO: 是否有可能同一snapshot里共同观测的点反而因为重投影误差很大被跳过了？
     if (camera_rig != nullptr &&
         CalculateSquaredReprojectionError(point2D.XY(), point3D.XYZ(),
                                           rig_proj_matrix,
@@ -743,12 +763,15 @@ void RigBundleAdjuster::AddImageToProblem(const image_t image_id,
       continue;
     }
 
+    // 重投影误差在阈值范围内，登记该观测，创建ceres代价函数
     num_observations += 1;
     point3D_num_observations_[point2D.Point3DId()] += 1;
 
     ceres::CostFunction* cost_function = nullptr;
 
+    // 如果没有 cam_rig
     if (camera_rig == nullptr) {
+      // 如果是位姿常值
       if (constant_pose) {
         switch (camera.ModelId()) {
 #define CAMERA_MODEL_CASE(CameraModel)                                 \
@@ -765,7 +788,8 @@ void RigBundleAdjuster::AddImageToProblem(const image_t image_id,
 
         problem_->AddResidualBlock(cost_function, loss_function,
                                    point3D.XYZ().data(), camera_params_data);
-      } else {
+      }
+      else {
         switch (camera.ModelId()) {
 #define CAMERA_MODEL_CASE(CameraModel)                                   \
   case CameraModel::kModelId:                                            \
@@ -782,7 +806,9 @@ void RigBundleAdjuster::AddImageToProblem(const image_t image_id,
                                    tvec_data, point3D.XYZ().data(),
                                    camera_params_data);
       }
-    } else {
+    }
+    // 如果有 cam_rig
+    else {
       switch (camera.ModelId()) {
 #define CAMERA_MODEL_CASE(CameraModel)                                      \
   case CameraModel::kModelId:                                               \
@@ -798,9 +824,17 @@ void RigBundleAdjuster::AddImageToProblem(const image_t image_id,
       problem_->AddResidualBlock(cost_function, loss_function, rig_qvec_data,
                                  rig_tvec_data, qvec_data, tvec_data,
                                  point3D.XYZ().data(), camera_params_data);
+      everInRig = true;
     }
   }
 
+  if (everInRig) {
+    // std::cout << "Image " << image_id << "'s qvec and tvec set constant" << std::endl;
+    problem_->SetParameterBlockConstant(qvec_data);
+    problem_->SetParameterBlockConstant(tvec_data);
+  }
+
+  // 如何可使用的观测数大于0
   if (num_observations > 0) {
     parameterized_qvec_data_.insert(qvec_data);
 
@@ -810,14 +844,18 @@ void RigBundleAdjuster::AddImageToProblem(const image_t image_id,
       // Set the relative pose of the camera constant if relative pose
       // refinement is disabled or if it is the reference camera to avoid over-
       // parameterization of the camera pose.
-      if (!rig_options_.refine_relative_poses ||
-          image.CameraId() == camera_rig->RefCameraId()) {
-        problem_->SetParameterBlockConstant(qvec_data);
-        problem_->SetParameterBlockConstant(tvec_data);
-      }
+      // 如果相对位姿细化功能关闭，或者该相机就是参考相机
+      // 那么设置相机的相对位姿为常数以避免相机位姿的过度参数化
+
+      // if (!rig_options_.refine_relative_poses ||
+      //     image.CameraId() == camera_rig->RefCameraId()) {
+      //   std::cout << "Image " << image_id << "'s qvec and tvec set constant" << std::endl;
+      //   problem_->SetParameterBlockConstant(qvec_data);
+      //   problem_->SetParameterBlockConstant(tvec_data);
+      // }
     }
 
-    // Set pose parameterization.
+    // TODO: Set pose parameterization.
     if (!constant_pose && constant_tvec) {
       const std::vector<int>& constant_tvec_idxs = 
           config_.ConstantTvec(image_id);
@@ -834,10 +872,12 @@ void RigBundleAdjuster::AddPointToProblem(const point3D_t point3D_id,
   // Is 3D point already fully contained in the problem? I.e. its entire track
   // is contained in `variable_image_ids`, `constant_image_ids`,
   // `constant_x_image_ids`.
+
   if (point3D_num_observations_[point3D_id] == point3D.Track().Length()) {
     return;
   }
 
+  // 遍历 point3D 被跟踪的元素， 首先排除已经在 `AddImageToProblem` 中被添加的观测
   for (const auto& track_el : point3D.Track().Elements()) {
     // Skip observations that were already added in `AddImageToProblem`.
     if (config_.HasImage(track_el.image_id)) {
@@ -880,6 +920,8 @@ void RigBundleAdjuster::AddPointToProblem(const point3D_t point3D_id,
 void RigBundleAdjuster::ComputeCameraRigPoses(
     const Reconstruction& reconstruction,
     const std::vector<CameraRig>& camera_rigs) {
+  // camera_rig_qvecs: std::vector<std::vector<Eigen::Vector4d>>
+  // camera_rig_tvecs: std::vector<std::vector<Eigen::Vector3d>>
   camera_rig_qvecs_.reserve(camera_rigs.size());
   camera_rig_tvecs_.reserve(camera_rigs.size());
   for (const auto& camera_rig : camera_rigs) {
@@ -891,9 +933,11 @@ void RigBundleAdjuster::ComputeCameraRigPoses(
     rig_tvecs.resize(camera_rig.NumSnapshots());
     for (size_t snapshot_idx = 0; snapshot_idx < camera_rig.NumSnapshots();
          ++snapshot_idx) {
+      // 预估这一组 snapshot 的参考相机的初始绝对位姿
       camera_rig.ComputeAbsolutePose(snapshot_idx, reconstruction,
                                      &rig_qvecs[snapshot_idx],
                                      &rig_tvecs[snapshot_idx]);
+      // 遍历这一组 snapshot 的 image_id, 添加该image的参考相机位姿
       for (const auto image_id : camera_rig.Snapshots()[snapshot_idx]) {
         image_id_to_rig_qvec_.emplace(image_id, &rig_qvecs[snapshot_idx]);
         image_id_to_rig_tvec_.emplace(image_id, &rig_tvecs[snapshot_idx]);

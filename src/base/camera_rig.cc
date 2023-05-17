@@ -234,6 +234,7 @@ void CameraRig::ComputeAbsolutePose(const size_t snapshot_idx,
                                     const Reconstruction& reconstruction,
                                     Eigen::Vector4d* abs_qvec,
                                     Eigen::Vector3d* abs_tvec) const {
+  // snapshot: std::vector<image_t>
   const auto& snapshot = snapshots_.at(snapshot_idx);
 
   std::vector<Eigen::Vector4d> abs_qvecs;
