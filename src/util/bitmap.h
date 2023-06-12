@@ -73,6 +73,7 @@ struct BitmapColor {
 };
 
 // Wrapper class around FreeImage bitmaps.
+// FreeImage 位图的包装类
 class Bitmap {
  public:
   Bitmap();

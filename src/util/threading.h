@@ -236,6 +236,8 @@ class ThreadPool {
   std::unordered_map<std::thread::id, int> thread_id_to_index_;
 };
 
+
+// 生产者-消费者范式的作业队列类。
 // A job queue class for the producer-consumer paradigm.
 //
 //    JobQueue<int> job_queue;

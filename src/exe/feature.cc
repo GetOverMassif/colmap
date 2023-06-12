@@ -106,6 +106,7 @@ int RunFeatureExtractor(int argc, char** argv) {
   int camera_mode = -1;
   std::string descriptor_normalization = "l1_root";
 
+  // 添加一些基础选项，以及默认选项：相机模式、图片集地址、描述符正则化
   OptionManager options;
   options.AddDatabaseOptions();
   options.AddImageOptions();
@@ -116,15 +117,18 @@ int RunFeatureExtractor(int argc, char** argv) {
   options.AddExtractionOptions();
   options.Parse(argc, argv);
 
+  // 设置图片阅读器选项
   ImageReaderOptions reader_options = *options.image_reader;
   reader_options.database_path = *options.database_path;
   reader_options.image_path = *options.image_path;
 
+  // 如果有必要，更新相机模式
   if (camera_mode >= 0) {
     UpdateImageReaderOptionsFromCameraMode(reader_options,
                                            (CameraMode)camera_mode);
   }
 
+  // 根据 描述符正则化方法设置不同的SIFT提取器正则化选项
   StringToLower(&descriptor_normalization);
   if (descriptor_normalization == "l1_root") {
     options.sift_extraction->normalization =
@@ -137,6 +141,7 @@ int RunFeatureExtractor(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
+  // 如果图像列表路径不为空，读取图像文件路径
   if (!image_list_path.empty()) {
     reader_options.image_list = ReadTextFileLines(image_list_path);
     if (reader_options.image_list.empty()) {
@@ -144,24 +149,29 @@ int RunFeatureExtractor(int argc, char** argv) {
     }
   }
 
+  // 查看相机模型名称是否存在
   if (!ExistsCameraModelWithName(reader_options.camera_model)) {
     std::cerr << "ERROR: Camera model does not exist" << std::endl;
   }
 
+  // 验证相机参数是否符合要求
   if (!VerifyCameraParams(reader_options.camera_model,
                           reader_options.camera_params)) {
     return EXIT_FAILURE;
   }
 
+  // 检查Sift的GPU参数
   if (!VerifySiftGPUParams(options.sift_extraction->use_gpu)) {
     return EXIT_FAILURE;
   }
 
+  // 创建一个 unique_ptr 智能指针
   std::unique_ptr<QApplication> app;
   if (options.sift_extraction->use_gpu && kUseOpenGL) {
     app.reset(new QApplication(argc, argv));
   }
 
+  // 创建Sift特征提取器（该类是Thread的子类）， 其中会进行一系列检查与配置
   SiftFeatureExtractor feature_extractor(reader_options,
                                          *options.sift_extraction);
 

@@ -309,6 +309,7 @@ void IncrementalMapperController::Run() {
       break;
     }
 
+    // 如果没有重建成功，会尝试两次将初始最小内点数除以2
     std::cout << "  => Relaxing the initialization constraints." << std::endl;
     init_mapper_options.init_min_num_inliers /= 2;
     Reconstruct(init_mapper_options);
@@ -373,13 +374,13 @@ void IncrementalMapperController::Reconstruct(
 
   // Is there a sub-model before we start the reconstruction? I.e. the user
   // has imported an existing reconstruction.
+  // 在我们开始重建之前是否已经有一个子模型？例如用户导入了一个已有的重建结果。
   const bool initial_reconstruction_given = reconstruction_manager_->Size() > 0;
   CHECK_LE(reconstruction_manager_->Size(), 1) << "Can only resume from a "
                                                   "single reconstruction, but "
                                                   "multiple are given.";
-
-  for (int num_trials = 0; num_trials < options_->init_num_trials;
-       ++num_trials) {
+  // 开始尝试
+  for (int num_trials = 0; num_trials < options_->init_num_trials; ++num_trials) {
     BlockIfPaused();
     if (IsStopped()) {
       break;
@@ -400,7 +401,7 @@ void IncrementalMapperController::Reconstruct(
     ////////////////////////////////////////////////////////////////////////////
     // Register initial pair
     ////////////////////////////////////////////////////////////////////////////
-
+    // TODO: 待看，如何 register initial pair
     if (reconstruction.NumRegImages() == 0) {
       image_t image_id1 = static_cast<image_t>(options_->init_image_id1);
       image_t image_id2 = static_cast<image_t>(options_->init_image_id2);
@@ -548,6 +549,7 @@ void IncrementalMapperController::Reconstruct(
 
           // If initial pair fails to continue for some time,
           // abort and try different initial pair.
+          // 如果初始对持续一段时间未能继续，就放弃并尝试不同的初始对。
           const size_t kMinNumInitialRegTrials = 30;
           if (reg_trial >= kMinNumInitialRegTrials &&
               reconstruction.NumRegImages() <
@@ -566,6 +568,7 @@ void IncrementalMapperController::Reconstruct(
       // If no image could be registered, try a single final global iterative
       // bundle adjustment and try again to register one image. If this fails
       // once, then exit the incremental mapping.
+      // 如果没有图像可以被配准，尝试一个单一的最终全局迭代BA，并再次尝试配准一个图像。如果在失败一次，则退出增量建图。
       if (!reg_next_success && prev_reg_next_success) {
         reg_next_success = true;
         prev_reg_next_success = false;
@@ -582,6 +585,7 @@ void IncrementalMapperController::Reconstruct(
     }
 
     // Only run final global BA, if last incremental BA was not global.
+    // 如果最后的增量BA不是全局，只运行最终的全局BA
     if (reconstruction.NumRegImages() >= 2 &&
         reconstruction.NumRegImages() != ba_prev_num_reg_images &&
         reconstruction.NumPoints3D() != ba_prev_num_points) {
@@ -590,6 +594,7 @@ void IncrementalMapperController::Reconstruct(
 
     // If the total number of images is small then do not enforce the minimum
     // model size so that we can reconstruct small image collections.
+    // 如果图像的总数很小，那么不强制要求最小模型大小，以便我们可以建立小型图像集合
     const size_t min_model_size =
         std::min(database_cache_.NumImages(),
                  static_cast<size_t>(options_->min_model_size));

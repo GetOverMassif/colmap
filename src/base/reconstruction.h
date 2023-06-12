@@ -516,7 +516,6 @@ Reconstruction::ImagePairs() const {
   return image_pair_stats_;
 }
 
-// TODO: 【ExistsCamera】
 bool Reconstruction::ExistsCamera(const camera_t camera_id) const {
   std::cout << "In ExistsCamera camera_id = " << camera_id << std::endl;
   return cameras_.find(camera_id) != cameras_.end();

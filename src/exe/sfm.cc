@@ -223,17 +223,19 @@ int RunMapper(int argc, char** argv) {
   // In case a new reconstruction is started, write results of individual sub-
   // models to as their reconstruction finishes instead of writing all results
   // after all reconstructions finished.
+  // 一旦一个新的重建开始了，当它们的重建结束时即写出一个独立子模型的结果，而不是在所有重建结束时去写出所有结果。
   size_t prev_num_reconstructions = 0;
+
+  // 如果输入路径为空
   if (input_path == "") {
     mapper.AddCallback(
         IncrementalMapperController::LAST_IMAGE_REG_CALLBACK, [&]() {
           // If the number of reconstructions has not changed, the last model
           // was discarded for some reason.
-          if (reconstruction_manager.Size() > prev_num_reconstructions) {
-            const std::string reconstruction_path = JoinPaths(
-                output_path, std::to_string(prev_num_reconstructions));
-            const auto& reconstruction =
-                reconstruction_manager.Get(prev_num_reconstructions);
+          if (reconstruction_manager.Size() > prev_num_reconstructions)
+          {
+            const std::string reconstruction_path = JoinPaths(output_path, std::to_string(prev_num_reconstructions));
+            const auto& reconstruction = reconstruction_manager.Get(prev_num_reconstructions);
             CreateDirIfNotExists(reconstruction_path);
             reconstruction.Write(reconstruction_path);
             options.Write(JoinPaths(reconstruction_path, "project.ini"));
@@ -242,6 +244,7 @@ int RunMapper(int argc, char** argv) {
         });
   }
 
+  // 启动 mapper
   mapper.Start();
   mapper.Wait();
 
@@ -252,6 +255,7 @@ int RunMapper(int argc, char** argv) {
 
   // In case the reconstruction is continued from an existing reconstruction, do
   // not create sub-folders but directly write the results.
+  // 如果是在现有的重建基础上继续重建，则不要创建子文件夹，而是直接写入结果。
   if (input_path != "" && reconstruction_manager.Size() > 0) {
     reconstruction_manager.Get(0).Write(output_path);
   }
@@ -583,7 +587,6 @@ namespace {
 //            frame002.png
 //            ...
 //
-// TODO:【ReadCameraRigConfig】
 std::vector<CameraRig> ReadCameraRigConfig(const std::string& rig_config_path,
                                            const Reconstruction& reconstruction,
                                            bool estimate_rig_relative_poses) {
@@ -678,7 +681,6 @@ std::vector<CameraRig> ReadCameraRigConfig(const std::string& rig_config_path,
 }  // namespace
 
 // 刚体BA约束
-// TODO:【RunRigBundleAdjuster】
 int RunRigBundleAdjuster(int argc, char** argv) {
   std::string input_path;
   std::string output_path;

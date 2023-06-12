@@ -275,6 +275,7 @@ class IncrementalMapper {
 
   // Estimated two-view geometry of last call to `FindFirstInitialImage`,
   // used as a cache for a subsequent call to `RegisterInitialImagePair`.
+  // 估计上次调用`FindFirstInitialImage`时的两个视图的几何形状，用作后续调用`RegisterInitialImagePair`时的缓存。
   image_pair_t prev_init_image_pair_id_;
   TwoViewGeometry prev_init_two_view_geometry_;
 

@@ -200,6 +200,7 @@ class Image {
   image_t image_id_;
 
   // The name of the image, i.e. the relative path.
+  // 图像名称，即相对路径
   std::string name_;
 
   // The identifier of the associated camera. Note that multiple images might

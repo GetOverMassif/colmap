@@ -287,6 +287,7 @@ void OptionManager::AddExtractionOptions() {
                               &sift_extraction->dsp_num_scales);
 }
 
+// TODO: To read，SiftMatching相关设置
 void OptionManager::AddMatchingOptions() {
   if (added_match_options_) {
     return;
@@ -345,7 +346,8 @@ void OptionManager::AddSequentialMatchingOptions() {
   added_sequential_match_options_ = true;
 
   AddMatchingOptions();
-
+  
+  // TODO: To read，SequentialMatching 相关设置
   AddAndRegisterDefaultOption("SequentialMatching.overlap",
                               &sequential_matching->overlap);
   AddAndRegisterDefaultOption("SequentialMatching.quadratic_overlap",

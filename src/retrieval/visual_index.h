@@ -264,6 +264,8 @@ void VisualIndex<kDescType, kDescDim, kEmbeddingDim>::Query(
   Eigen::MatrixXi word_ids;
   QueryAndFindWordIds(options, descriptors, image_scores, &word_ids);
 
+  // 后面进行空间检验
+
   if (options.num_images_after_verification <= 0) {
     return;
   }

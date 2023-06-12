@@ -286,7 +286,6 @@ std::vector<std::string> ReadTextFileLines(const std::string& path) {
 
     lines.push_back(line);
   }
-
   return lines;
 }
 

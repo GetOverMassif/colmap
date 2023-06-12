@@ -99,6 +99,7 @@ struct TwoViewGeometry {
 
     // Whether to enable watermark detection. A watermark causes a pure
     // translation in the image space with inliers in the border region.
+    // 是否启用水印检测。水印在图像空间中产生纯平移，并在边界区域中产生内点。
     bool detect_watermark = true;
 
     // Whether to ignore watermark models in multiple model estimation.
@@ -106,9 +107,11 @@ struct TwoViewGeometry {
 
     // In case the user asks for it, only going to estimate a Homography
     // between both cameras.
+    // 如果用户要求，只计算两个相机之间的单应性矩阵
     bool force_H_use = false;
 
     // Whether to compute the relative pose between the two views.
+    // 是否计算两个视图之间的相对姿态
     bool compute_relative_pose = false;
 
     // Options used to robustly estimate the geometry.

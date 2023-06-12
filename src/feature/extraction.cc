@@ -88,9 +88,11 @@ SiftFeatureExtractor::SiftFeatureExtractor(
       sift_options_(sift_options),
       database_(reader_options_.database_path),
       image_reader_(reader_options_, &database_) {
+  // 检查阅读器选项、Sift选项
   CHECK(reader_options_.Check());
   CHECK(sift_options_.Check());
 
+  // 设置相机mask
   std::shared_ptr<Bitmap> camera_mask;
   if (!reader_options_.camera_mask_path.empty()) {
     camera_mask = std::make_shared<Bitmap>();
@@ -103,15 +105,16 @@ SiftFeatureExtractor::SiftFeatureExtractor(
     }
   }
 
+  // 获取并行线程数
   const int num_threads = GetEffectiveNumThreads(sift_options_.num_threads);
   CHECK_GT(num_threads, 0);
 
   // Make sure that we only have limited number of objects in the queue to avoid
   // excess in memory usage since images and features take lots of memory.
+  // 确保队列中只有有限数量的对象，以避免内存使用过多，因为图像和特征会占用大量内存
   const int kQueueSize = 1;
   resizer_queue_ = std::make_unique<JobQueue<internal::ImageData>>(kQueueSize);
-  extractor_queue_ =
-      std::make_unique<JobQueue<internal::ImageData>>(kQueueSize);
+  extractor_queue_ = std::make_unique<JobQueue<internal::ImageData>>(kQueueSize);
   writer_queue_ = std::make_unique<JobQueue<internal::ImageData>>(kQueueSize);
 
   if (sift_options_.max_image_size > 0) {
@@ -361,6 +364,7 @@ SiftFeatureExtractorThread::SiftFeatureExtractorThread(
 }
 
 void SiftFeatureExtractorThread::Run() {
+  // 如果使用GPU
   std::unique_ptr<SiftGPU> sift_gpu;
   if (sift_options_.use_gpu) {
 #ifndef CUDA_ENABLED
@@ -454,6 +458,7 @@ void FeatureWriterThread::Run() {
                                 image_data.image.Name().c_str())
                 << std::endl;
 
+      // Check image_data.status
       if (image_data.status == ImageReader::Status::IMAGE_EXISTS) {
         std::cout << "  SKIP: Features for image already extracted."
                   << std::endl;
@@ -479,6 +484,7 @@ void FeatureWriterThread::Run() {
         continue;
       }
 
+      // print image's dimension/camera/focal_length/prior/features
       std::cout << StringPrintf("  Dimensions:      %d x %d",
                                 image_data.camera.Width(),
                                 image_data.camera.Height())
@@ -508,10 +514,12 @@ void FeatureWriterThread::Run() {
 
       DatabaseTransaction database_transaction(database_);
 
+      // 设置 image_id
       if (image_data.image.ImageId() == kInvalidImageId) {
         image_data.image.SetImageId(database_->WriteImage(image_data.image));
       }
 
+      // 向 database中 写入关键点和描述符数据
       if (!database_->ExistsKeypoints(image_data.image.ImageId())) {
         database_->WriteKeypoints(image_data.image.ImageId(),
                                   image_data.keypoints);

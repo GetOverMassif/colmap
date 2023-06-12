@@ -755,7 +755,6 @@ void RigBundleAdjuster::AddImageToProblem(const image_t image_id,
     assert(point3D.Track().Length() > 1);
 
     // 如果有rig且经过重投影后发现误差较大，则跳过该点
-    // TODO: 是否有可能同一snapshot里共同观测的点反而因为重投影误差很大被跳过了？
     if (camera_rig != nullptr &&
         CalculateSquaredReprojectionError(point2D.XY(), point3D.XYZ(),
                                           rig_proj_matrix,
@@ -855,7 +854,6 @@ void RigBundleAdjuster::AddImageToProblem(const image_t image_id,
       // }
     }
 
-    // TODO: Set pose parameterization.
     if (!constant_pose && constant_tvec) {
       const std::vector<int>& constant_tvec_idxs = 
           config_.ConstantTvec(image_id);

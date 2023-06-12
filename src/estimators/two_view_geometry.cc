@@ -235,12 +235,14 @@ void TwoViewGeometry::EstimateCalibrated(
     const FeatureMatches& matches, const Options& options) {
   options.Check();
 
+  // 检查匹配数量是否达到最小要求
   if (matches.size() < options.min_num_inliers) {
     config = ConfigurationType::DEGENERATE;
     return;
   }
 
   // Extract corresponding points.
+  // 提取相应点(二维坐标)
   std::vector<Eigen::Vector2d> matched_points1(matches.size());
   std::vector<Eigen::Vector2d> matched_points2(matches.size());
   std::vector<Eigen::Vector2d> matched_points1_normalized(matches.size());
@@ -255,19 +257,20 @@ void TwoViewGeometry::EstimateCalibrated(
   }
 
   // Estimate epipolar models.
-
+  // 估计对极几何模型
   auto E_ransac_options = options.ransac_options;
   E_ransac_options.max_error =
       (camera1.ImageToWorldThreshold(options.ransac_options.max_error) +
-       camera2.ImageToWorldThreshold(options.ransac_options.max_error)) /
-      2;
+       camera2.ImageToWorldThreshold(options.ransac_options.max_error)) / 2;
 
+  // 本质矩阵五点法估计器
   LORANSAC<EssentialMatrixFivePointEstimator, EssentialMatrixFivePointEstimator>
       E_ransac(E_ransac_options);
   const auto E_report =
       E_ransac.Estimate(matched_points1_normalized, matched_points2_normalized);
   E = E_report.model;
 
+  // 基础矩阵7点法估计器
   LORANSAC<FundamentalMatrixSevenPointEstimator,
            FundamentalMatrixEightPointEstimator>
       F_ransac(options.ransac_options);
@@ -275,7 +278,7 @@ void TwoViewGeometry::EstimateCalibrated(
   F = F_report.model;
 
   // Estimate planar or panoramic model.
-
+  // 估计一个平面或全景模型
   LORANSAC<HomographyMatrixEstimator, HomographyMatrixEstimator> H_ransac(
       options.ransac_options);
   const auto H_report = H_ransac.Estimate(matched_points1, matched_points2);
@@ -290,7 +293,7 @@ void TwoViewGeometry::EstimateCalibrated(
   }
 
   // Determine inlier ratios of different models.
-
+  // 计算不同模型的内点比率
   const double E_F_inlier_ratio =
       static_cast<double>(E_report.support.num_inliers) /
       F_report.support.num_inliers;
@@ -307,8 +310,9 @@ void TwoViewGeometry::EstimateCalibrated(
   if (E_report.success && E_F_inlier_ratio > options.min_E_F_inlier_ratio &&
       E_report.support.num_inliers >= options.min_num_inliers) {
     // Calibrated configuration.
-
+    // 校准的配置
     // Always use the model with maximum matches.
+    // 总是使用具有最大匹配的模型
     if (E_report.support.num_inliers >= F_report.support.num_inliers) {
       num_inliers = E_report.support.num_inliers;
       best_inlier_mask = &E_report.inlier_mask;
@@ -329,7 +333,7 @@ void TwoViewGeometry::EstimateCalibrated(
   } else if (F_report.success &&
              F_report.support.num_inliers >= options.min_num_inliers) {
     // Uncalibrated configuration.
-
+    // 未校准的配置
     num_inliers = F_report.support.num_inliers;
     best_inlier_mask = &F_report.inlier_mask;
 
@@ -374,12 +378,14 @@ void TwoViewGeometry::EstimateUncalibrated(
     const FeatureMatches& matches, const Options& options) {
   options.Check();
 
+  // 首先检查匹配数量是否达到最小要求
   if (matches.size() < options.min_num_inliers) {
     config = ConfigurationType::DEGENERATE;
     return;
   }
 
   // Extract corresponding points.
+  // 提取相应点(二维点坐标)
   std::vector<Eigen::Vector2d> matched_points1(matches.size());
   std::vector<Eigen::Vector2d> matched_points2(matches.size());
   for (size_t i = 0; i < matches.size(); ++i) {
@@ -388,7 +394,7 @@ void TwoViewGeometry::EstimateUncalibrated(
   }
 
   // Estimate epipolar model.
-
+  // 估计对极几何模型
   LORANSAC<FundamentalMatrixSevenPointEstimator,
            FundamentalMatrixEightPointEstimator>
       F_ransac(options.ransac_options);

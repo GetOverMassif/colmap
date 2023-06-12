@@ -351,6 +351,7 @@ void FindBestMatchesFLANN(
   }
 }
 
+// 如果描述符的数量超过了最大匹配特征数量，就会发出警告，建议增加最大匹配特征数量。
 void WarnIfMaxNumMatchesReachedGPU(const SiftMatchGPU& sift_match_gpu,
                                    const FeatureDescriptors& descriptors) {
   if (sift_match_gpu.GetMaxSift() < descriptors.rows()) {
@@ -854,6 +855,7 @@ bool ExtractSiftFeaturesGPU(const SiftExtractionOptions& options,
                             const Bitmap& bitmap, SiftGPU* sift_gpu,
                             FeatureKeypoints* keypoints,
                             FeatureDescriptors* descriptors) {
+  // 首先检查 options/bitmap/
   CHECK(options.Check());
   CHECK(bitmap.IsGrey());
   CHECK_NOTNULL(keypoints);
@@ -861,6 +863,7 @@ bool ExtractSiftFeaturesGPU(const SiftExtractionOptions& options,
 
   // Note the max dimension of SiftGPU is the maximum dimension of the
   // first octave in the pyramid (which is the 'first_octave').
+  // 注意，SiftGPU的最大维度是金字塔中第一个octave的最大维度(即“first_octave”)。
   const int compensation_factor = 1 << -std::min(0, options.first_octave);
   CHECK_EQ(options.max_image_size * compensation_factor,
            sift_gpu->GetMaxDimension());
@@ -868,12 +871,16 @@ bool ExtractSiftFeaturesGPU(const SiftExtractionOptions& options,
   CHECK(!options.estimate_affine_shape);
   CHECK(!options.domain_size_pooling);
 
+  // 创建sift特征提取锁
   std::unique_lock<std::mutex> lock(
       *sift_extraction_mutexes[sift_gpu->gpu_index]);
 
   // Note, that this produces slightly different results than using SiftGPU
   // directly for RGB->GRAY conversion, since it uses different weights.
+  // 注意，这与直接使用SiftGPU进行RGB->灰度转换产生的结果略有不同，因为它使用了不同的权重。
   const std::vector<uint8_t> bitmap_raw_bits = bitmap.ConvertToRawBits();
+
+  // 运行Sift特征提取
   const int code =
       sift_gpu->RunSIFT(bitmap.ScanWidth(), bitmap.Height(),
                         bitmap_raw_bits.data(), GL_LUMINANCE, GL_UNSIGNED_BYTE);
@@ -892,6 +899,7 @@ bool ExtractSiftFeaturesGPU(const SiftExtractionOptions& options,
       descriptors_float(num_features, 128);
 
   // Download the extracted keypoints and descriptors.
+  // 下载已经提取的特征向量
   sift_gpu->GetFeatureVector(keypoints_data.data(), descriptors_float.data());
 
   keypoints->resize(num_features);
@@ -901,6 +909,7 @@ bool ExtractSiftFeaturesGPU(const SiftExtractionOptions& options,
   }
 
   // Save and normalize the descriptors.
+  // 根据正则化类型，存储和正则化描述符
   if (options.normalization == SiftExtractionOptions::Normalization::L2) {
     descriptors_float = L2NormalizeFeatureDescriptors(descriptors_float);
   } else if (options.normalization ==
@@ -1185,6 +1194,7 @@ void MatchSiftFeaturesGPU(const SiftMatchingOptions& match_options,
 
   matches->resize(static_cast<size_t>(match_options.max_num_matches));
 
+  // 获取Sift匹配的数量
   const int num_matches = sift_match_gpu->GetSiftMatch(
       match_options.max_num_matches,
       reinterpret_cast<uint32_t(*)[2]>(matches->data()),
@@ -1192,6 +1202,7 @@ void MatchSiftFeaturesGPU(const SiftMatchingOptions& match_options,
       static_cast<float>(match_options.max_ratio), match_options.cross_check);
 
   if (num_matches < 0) {
+    // 错误： 特征匹配失败。这可能是由于GPU内存不足引起的。考虑减少最大特征数和/或匹配数。
     std::cerr << "ERROR: Feature matching failed. This is probably caused by "
                  "insufficient GPU memory. Consider reducing the maximum "
                  "number of features and/or matches."

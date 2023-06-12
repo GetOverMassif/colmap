@@ -115,57 +115,73 @@ struct SiftExtractionOptions {
 
 struct SiftMatchingOptions {
   // Number of threads for feature matching and geometric verification.
+  // 进行特征匹配和几何验证的线程数量
   int num_threads = -1;
 
   // Whether to use the GPU for feature matching.
+  // 是否使用GPU
   bool use_gpu = true;
 
   // Index of the GPU used for feature matching. For multi-GPU matching,
   // you should separate multiple GPU indices by comma, e.g., "0,1,2,3".
+  // 用于特征匹配的GPU索引，以及多GPU匹配的定义方式
   std::string gpu_index = "-1";
 
   // Maximum distance ratio between first and second best match.
+  // 第一最佳匹配和第二最佳匹配之间的最大距离比
   double max_ratio = 0.8;
 
   // Maximum distance to best match.
+  // 最佳匹配的最大距离
   double max_distance = 0.7;
 
   // Whether to enable cross checking in matching.
+  // 是否允许在匹配中进行交叉检验
   bool cross_check = true;
 
   // Maximum number of matches.
+  // 匹配的最大数量
   int max_num_matches = 32768;
 
   // Maximum epipolar error in pixels for geometric verification.
+  // 用于几何验证的像素最大对极误差
   double max_error = 4.0;
 
   // Confidence threshold for geometric verification.
+  // 几何验证的置信阈值
   double confidence = 0.999;
 
   // Minimum/maximum number of RANSAC iterations. Note that this option
   // overrules the min_inlier_ratio option.
+  // RANSAC迭代的最小/最大数量。注意，该选项覆盖了 min_inlier_ratio 选项
   int min_num_trials = 100;
   int max_num_trials = 10000;
 
   // A priori assumed minimum inlier ratio, which determines the maximum
   // number of iterations.
+  // 一个先验假设最小内点比，它决定了最大迭代次数。
   double min_inlier_ratio = 0.25;
 
   // Minimum number of inliers for an image pair to be considered as
   // geometrically verified.
+  // 图像对被认为是几何验证成功的最小内点数量。
   int min_num_inliers = 15;
 
   // Whether to attempt to estimate multiple geometric models per image pair.
+  // 是否尝试对每个图像对估计多个几何模型。
   bool multiple_models = false;
 
   // Whether to perform guided matching, if geometric verification succeeds.
+  // 如果几何验证成功，是否进行引导匹配。
   bool guided_matching = false;
 
   // Force Homography use for Two-view Geometry (can help for planar scenes)
+  // 是否强制单应性用于两视图几何(可以帮助平面场景)
   bool planar_scene = false;
 
   // Whether to estimate the relative pose between the two images and save them
   // to the DB.
+  // 是否估计两幅图像之间的相对姿态并将其保存到DB中。
   bool compute_relative_pose = false;
 
   bool Check() const;

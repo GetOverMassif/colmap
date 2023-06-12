@@ -68,6 +68,7 @@ void IndexImagesInVisualIndex(const int num_threads, const int num_checks,
     std::cout << StringPrintf("Indexing image [%d/%d]", i + 1, image_ids.size())
               << std::flush;
 
+    // 获取关键点和描述子
     auto keypoints = *cache->GetKeypoints(image_ids[i]);
     auto descriptors = *cache->GetDescriptors(image_ids[i]);
     if (max_num_features > 0 && descriptors.rows() > max_num_features) {
@@ -89,23 +90,30 @@ void MatchNearestNeighborsInVisualIndex(
     const int max_num_features, const std::vector<image_t>& image_ids,
     Thread* thread, FeatureMatcherCache* cache,
     retrieval::VisualIndex<>* visual_index, SiftFeatureMatcher* matcher) {
+
+  // The retrieval struct holds the results of the nearest neighbor search.
+  // 这里的image_scores存储对每个图像的匹配分数
   struct Retrieval {
     image_t image_id = kInvalidImageId;
     std::vector<retrieval::ImageScore> image_scores;
   };
 
   // Create a thread pool to retrieve the nearest neighbors.
+  // 创建一个线程池来索引最近邻，索引队列
   ThreadPool retrieval_thread_pool(num_threads);
   JobQueue<Retrieval> retrieval_queue(num_threads);
 
   // The retrieval thread kernel function. Note that the descriptors should be
   // extracted outside of this function sequentially to avoid any concurrent
   // access to the database causing race conditions.
+  // 索引线程的核心功能。注意描述符应该在函数外部按顺序提取，方式对数据库的并发访问造成问题。
   retrieval::VisualIndex<>::QueryOptions query_options;
   query_options.max_num_images = num_images;
   query_options.num_neighbors = num_neighbors;
   query_options.num_checks = num_checks;
   query_options.num_images_after_verification = num_images_after_verification;
+
+  // 定义查询函数
   auto QueryFunc = [&](const image_t image_id) {
     auto keypoints = *cache->GetKeypoints(image_id);
     auto descriptors = *cache->GetDescriptors(image_id);
@@ -122,6 +130,8 @@ void MatchNearestNeighborsInVisualIndex(
   };
 
   // Initially, make all retrieval threads busy and continue with the matching.
+  // 初始时，使所有线程忙碌起来，持续匹配，
+  // 这里添加的 image_id 似乎在后面的循环中又一次被添加了
   size_t image_idx = 0;
   const size_t init_num_tasks =
       std::min(image_ids.size(), 2 * retrieval_thread_pool.NumThreads());
@@ -132,6 +142,7 @@ void MatchNearestNeighborsInVisualIndex(
   std::vector<std::pair<image_t, image_t>> image_pairs;
 
   // Pop the finished retrieval results and enqueue them for feature matching.
+  // 探出完成的检索结果，将它们加入队列等待特征匹配。
   for (size_t i = 0; i < image_ids.size(); ++i) {
     if (thread->IsStopped()) {
       retrieval_queue.Stop();
@@ -145,12 +156,14 @@ void MatchNearestNeighborsInVisualIndex(
               << std::flush;
 
     // Push the next image to the retrieval queue.
+    // 将下一个图像加入检索队列
     if (image_idx < image_ids.size()) {
       retrieval_thread_pool.AddTask(QueryFunc, image_ids[image_idx]);
       image_idx += 1;
     }
 
     // Pop the next results from the retrieval queue.
+    // 从检索队列中取出结果
     auto retrieval = retrieval_queue.Pop();
     CHECK(retrieval.IsValid());
 
@@ -158,6 +171,7 @@ void MatchNearestNeighborsInVisualIndex(
     const auto& image_scores = retrieval.Data().image_scores;
 
     // Compose the image pairs from the scores.
+    // 根据分数组合图像对
     image_pairs.clear();
     image_pairs.reserve(image_scores.size());
     for (const auto image_score : image_scores) {
@@ -422,22 +436,24 @@ void SiftGPUFeatureMatcher::Run() {
 
     auto input_job = input_queue_->Pop();
     if (input_job.IsValid()) {
-      auto& data = input_job.Data();
+        auto& data = input_job.Data();
 
-      if (!cache_->ExistsDescriptors(data.image_id1) ||
-          !cache_->ExistsDescriptors(data.image_id2)) {
+        // 此时 match 和 two_view_geometry 尚且为空
+
+        if (!cache_->ExistsDescriptors(data.image_id1) ||
+            !cache_->ExistsDescriptors(data.image_id2)) {
         CHECK(output_queue_->Push(std::move(data)));
         continue;
-      }
+        }
 
-      const FeatureDescriptors* descriptors1_ptr;
-      GetDescriptorData(0, data.image_id1, &descriptors1_ptr);
-      const FeatureDescriptors* descriptors2_ptr;
-      GetDescriptorData(1, data.image_id2, &descriptors2_ptr);
-      MatchSiftFeaturesGPU(options_, descriptors1_ptr, descriptors2_ptr,
-                           &sift_match_gpu, &data.matches);
+        const FeatureDescriptors* descriptors1_ptr;
+        GetDescriptorData(0, data.image_id1, &descriptors1_ptr);
+        const FeatureDescriptors* descriptors2_ptr;
+        GetDescriptorData(1, data.image_id2, &descriptors2_ptr);
+        MatchSiftFeaturesGPU(options_, descriptors1_ptr, descriptors2_ptr,
+                            &sift_match_gpu, &data.matches);
 
-      CHECK(output_queue_->Push(std::move(data)));
+        CHECK(output_queue_->Push(std::move(data)));
     }
   }
 }
@@ -694,6 +710,7 @@ SiftFeatureMatcher::SiftFeatureMatcher(const SiftMatchingOptions& options,
 
   verifiers_.reserve(num_threads);
   if (options_.guided_matching) {
+    std::cout << "guided_matching = True" << std::endl;
     for (int i = 0; i < num_threads; ++i) {
       verifiers_.emplace_back(std::make_unique<TwoViewGeometryVerifier>(
           options_, cache, &verifier_queue_, &guided_matcher_queue_));
@@ -717,6 +734,7 @@ SiftFeatureMatcher::SiftFeatureMatcher(const SiftMatchingOptions& options,
       }
     }
   } else {
+    std::cout << "guided_matching = False" << std::endl;
     for (int i = 0; i < num_threads; ++i) {
       verifiers_.emplace_back(std::make_unique<TwoViewGeometryVerifier>(
           options_, cache, &verifier_queue_, &output_queue_));
@@ -834,8 +852,10 @@ void SiftFeatureMatcher::Match(
     const bool exists_inlier_matches =
         cache_->ExistsInlierMatches(image_pair.first, image_pair.second);
 
+    // printf("exists_matches/inlier_matches: %d,%d\n", exists_matches, exists_inlier_matches);
+
     if (exists_matches && exists_inlier_matches) {
-      continue;
+        continue;
     }
 
     num_outputs += 1;
@@ -844,6 +864,9 @@ void SiftFeatureMatcher::Match(
     // from scratch and delete the existing results. This must be done before
     // pushing the jobs to the queue, otherwise database constraints might fail
     // when writing an existing result into the database.
+
+    // 如果只有matches或者inlier matches存在，我们从头开始重新计算它们并删除现有的结果。
+    // 这必须在将任务推送到队列之前完成，否则在将现有结果写入数据库时可能会导致数据库约束失败。
 
     if (exists_inlier_matches) {
       cache_->DeleteInlierMatches(image_pair.first, image_pair.second);
@@ -854,11 +877,13 @@ void SiftFeatureMatcher::Match(
     data.image_id2 = image_pair.second;
 
     if (exists_matches) {
-      data.matches = cache_->GetMatches(image_pair.first, image_pair.second);
-      cache_->DeleteMatches(image_pair.first, image_pair.second);
-      CHECK(verifier_queue_.Push(std::move(data)));
+        // TODO: 在此处计算两张图像间匹配点数量
+        data.matches = cache_->GetMatches(image_pair.first, image_pair.second);
+        cache_->DeleteMatches(image_pair.first, image_pair.second);
+        CHECK(verifier_queue_.Push(std::move(data)));
     } else {
-      CHECK(matcher_queue_.Push(std::move(data)));
+        // std::cout << "push matcher_queue_: " << num_outputs << std::endl;
+        CHECK(matcher_queue_.Push(std::move(data)));
     }
   }
 
@@ -903,6 +928,7 @@ ExhaustiveFeatureMatcher::ExhaustiveFeatureMatcher(
 void ExhaustiveFeatureMatcher::Run() {
   PrintHeading1("Exhaustive feature matching");
 
+  // 首先对匹配器进行设置
   if (!matcher_.Setup()) {
     return;
   }
@@ -919,47 +945,53 @@ void ExhaustiveFeatureMatcher::Run() {
   std::vector<std::pair<image_t, image_t>> image_pairs;
   image_pairs.reserve(num_pairs_per_block);
 
-  for (size_t start_idx1 = 0; start_idx1 < image_ids.size();
-       start_idx1 += block_size) {
-    const size_t end_idx1 =
-        std::min(image_ids.size(), start_idx1 + block_size) - 1;
-    for (size_t start_idx2 = 0; start_idx2 < image_ids.size();
-         start_idx2 += block_size) {
-      const size_t end_idx2 =
-          std::min(image_ids.size(), start_idx2 + block_size) - 1;
+  int cnt_matches = 0;
+  int cnt_image = image_ids.size();
+  for (size_t start_idx1 = 0; start_idx1 < image_ids.size(); start_idx1 += block_size)
+  {
+    const size_t end_idx1 = std::min(image_ids.size(), start_idx1 + block_size) - 1;
+    for (size_t start_idx2 = 0; start_idx2 < image_ids.size(); start_idx2 += block_size)
+    {
+        const size_t end_idx2 = std::min(image_ids.size(), start_idx2 + block_size) - 1;
 
-      if (IsStopped()) {
+        if (IsStopped()) {
         GetTimer().PrintMinutes();
         return;
-      }
+        }
 
-      Timer timer;
-      timer.Start();
+        Timer timer; 
+        timer.Start();
 
-      std::cout << StringPrintf("Matching block [%d/%d, %d/%d]",
+        std::cout << StringPrintf("Matching block [%d/%d, %d/%d]",
                                 start_idx1 / block_size + 1, num_blocks,
                                 start_idx2 / block_size + 1, num_blocks)
                 << std::flush;
-
-      image_pairs.clear();
-      for (size_t idx1 = start_idx1; idx1 <= end_idx1; ++idx1) {
+        // TODO: match 有待阅读
+        image_pairs.clear();
+        for (size_t idx1 = start_idx1; idx1 <= end_idx1; ++idx1) {
         for (size_t idx2 = start_idx2; idx2 <= end_idx2; ++idx2) {
-          const size_t block_id1 = idx1 % block_size;
-          const size_t block_id2 = idx2 % block_size;
-          if ((idx1 > idx2 && block_id1 <= block_id2) ||
-              (idx1 < idx2 &&
-               block_id1 < block_id2)) {  // Avoid duplicate pairs
+            cnt_matches++;
+            const size_t block_id1 = idx1 % block_size;
+            const size_t block_id2 = idx2 % block_size;
+            if ((idx1 > idx2 && block_id1 <= block_id2) ||
+                (idx1 < idx2 && block_id1 < block_id2))
+            {  // Avoid duplicate pairs
+            // 避免重复对
             image_pairs.emplace_back(image_ids[idx1], image_ids[idx2]);
-          }
+            }
         }
-      }
+        }
 
-      DatabaseTransaction database_transaction(&database_);
-      matcher_.Match(image_pairs);
+        DatabaseTransaction database_transaction(&database_);
+        matcher_.Match(image_pairs);
 
-      PrintElapsedTime(timer);
+        PrintElapsedTime(timer);
     }
   }
+
+  std::cout << "cnt_image: " << cnt_image << std::endl;
+  std::cout << "block_size: " << block_size << std::endl;
+  std::cout << "cnt_matches: " << cnt_matches << std::endl;
 
   GetTimer().PrintMinutes();
 }
@@ -1010,6 +1042,12 @@ std::vector<image_t> SequentialFeatureMatcher::GetOrderedImageIds() const {
             [](const Image& image1, const Image& image2) {
               return image1.Name() < image2.Name();
             });
+    
+//   for (auto &ordered_images : ordered_images) {
+//     std::cout << ordered_images.Name() << std::endl;
+//   }
+//   std::cout << "Finish name print";
+//   exit(1);
 
   std::vector<image_t> ordered_image_ids;
   ordered_image_ids.reserve(image_ids.size());
@@ -1066,10 +1104,12 @@ void SequentialFeatureMatcher::RunSequentialMatching(
 void SequentialFeatureMatcher::RunLoopDetection(
     const std::vector<image_t>& image_ids) {
   // Read the pre-trained vocabulary tree from disk.
+  // 从磁盘读取预先训练的词汇树。
   retrieval::VisualIndex<> visual_index;
   visual_index.Read(options_.vocab_tree_path);
 
   // Index all images in the visual index.
+  // 在 visual index 中索引所有的图像
   IndexImagesInVisualIndex(match_options_.num_threads,
                            options_.loop_detection_num_checks,
                            options_.loop_detection_max_num_features, image_ids,

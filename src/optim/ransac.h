@@ -47,21 +47,26 @@ namespace colmap {
 struct RANSACOptions {
   // Maximum error for a sample to be considered as an inlier. Note that
   // the residual of an estimator corresponds to a squared error.
+  // 一个采样点被人为是内点的最大误差，注意，这里的残差是估计器的平方误差
   double max_error = 0.0;
 
   // A priori assumed minimum inlier ratio, which determines the maximum number
   // of iterations. Only applies if smaller than `max_num_trials`.
+  // 先验假设的最小内点比例，决定了最大迭代次数，只有当小于最大迭代次数时才有效
   double min_inlier_ratio = 0.1;
 
   // Abort the iteration if minimum probability that one sample is free from
   // outliers is reached.
+  // 如果一个样本没有异常值的概率达到最小，则终止迭代。
   double confidence = 0.99;
 
   // The num_trials_multiplier to the dynamically computed maximum number of
   // iterations based on the specified confidence value.
+  // 动态计算的最大迭代次数的乘数，基于指定的置信度
   double dyn_num_trials_multiplier = 3.0;
 
   // Number of random trials to estimate model from random subset.
+  // 从随机子集中估计模型的随机试验次数
   size_t min_num_trials = 0;
   size_t max_num_trials = std::numeric_limits<size_t>::max();
 
@@ -92,6 +97,7 @@ class RANSAC {
     typename SupportMeasurer::Support support;
 
     // Boolean mask which is true if a sample is an inlier.
+    // 布尔类型mask，true则表示对应采样点为内点
     std::vector<char> inlier_mask;
 
     // The estimated model.

@@ -53,35 +53,45 @@ struct ExhaustiveMatchingOptions {
   bool Check() const;
 };
 
+// 序列匹配选项
 struct SequentialMatchingOptions {
   // Number of overlapping image pairs.
+  // 重叠图像对的数量
   int overlap = 10;
 
   // Whether to match images against their quadratic neighbors.
+  // 是否将图像与二次近邻进行匹配
   bool quadratic_overlap = true;
 
   // Whether to enable vocabulary tree based loop detection.
+  // 是否启用基于词汇树的回环检测
   bool loop_detection = false;
 
   // Loop detection is invoked every `loop_detection_period` images.
+  // 每多少个图像调用一次回环检测
   int loop_detection_period = 10;
 
   // The number of images to retrieve in loop detection. This number should
   // be significantly bigger than the sequential matching overlap.
+  // 回环检测中需要检索的图像数量。这个数字应明显大于顺序匹配的重叠部分。
   int loop_detection_num_images = 50;
 
   // Number of nearest neighbors to retrieve per query feature.
+  // 每个查询特征检索的最近邻数量
   int loop_detection_num_nearest_neighbors = 1;
 
   // Number of nearest-neighbor checks to use in retrieval.
+  // 检索时使用的最近邻检查数
   int loop_detection_num_checks = 256;
 
   // How many images to return after spatial verification. Set to 0 to turn off
   // spatial verification.
+  // 空间验证后返回的图像数量。设置为0则关闭空间验证。
   int loop_detection_num_images_after_verification = 0;
 
   // The maximum number of features to use for indexing an image. If an
   // image has more features, only the largest-scale features will be indexed.
+  // 用于索引图像的最大特征数。如果图像的特征较多，则只索引规模最大的特征。
   int loop_detection_max_num_features = -1;
 
   // Path to the vocabulary tree.
@@ -344,6 +354,10 @@ class TwoViewGeometryVerifier : public Thread {
 // performance of the matching by taking advantage of caching and database
 // transactions, pass multiple images to the `Match` function. Note that the
 // database should be in an active transaction while calling `Match`.
+
+// 多线程和多GPU SIFT特征匹配器，将计算结果写入数据库并跳过已匹配的图像对。
+// 为了通过利用 缓存 和 数据库的 transactions 来提高匹配的性能，将多个图像传递给“Match”函数。
+// 注意，在调用“Match”时，数据库应处于 active transaction 中。
 class SiftFeatureMatcher {
  public:
   SiftFeatureMatcher(const SiftMatchingOptions& options, Database* database,
@@ -370,7 +384,7 @@ class SiftFeatureMatcher {
   std::unique_ptr<ThreadPool> thread_pool_;
 
   JobQueue<internal::FeatureMatcherData> matcher_queue_;
-  JobQueue<internal::FeatureMatcherData> verifier_queue_;
+  JobQueue<internal::FeatureMatcherData> verifier_queue_;   // 
   JobQueue<internal::FeatureMatcherData> guided_matcher_queue_;
   JobQueue<internal::FeatureMatcherData> output_queue_;
 };
@@ -445,8 +459,8 @@ class SequentialFeatureMatcher : public Thread {
   void RunSequentialMatching(const std::vector<image_t>& image_ids);
   void RunLoopDetection(const std::vector<image_t>& image_ids);
 
-  const SequentialMatchingOptions options_;
-  const SiftMatchingOptions match_options_;
+  const SequentialMatchingOptions options_;  // 顺序匹配选项
+  const SiftMatchingOptions match_options_;  // SIFT匹配选项
   Database database_;
   FeatureMatcherCache cache_;
   SiftFeatureMatcher matcher_;
