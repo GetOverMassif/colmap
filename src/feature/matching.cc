@@ -294,6 +294,13 @@ FeatureMatches FeatureMatcherCache::GetMatches(const image_t image_id1,
   return database_->ReadMatches(image_id1, image_id2);
 }
 
+// 获取两视图相关信息
+TwoViewGeometry FeatureMatcherCache::GetTwoViewGeometry(const image_t image_id1,
+                                               const image_t image_id2) {
+  std::unique_lock<std::mutex> lock(database_mutex_);
+  return database_->ReadTwoViewGeometry(image_id1, image_id2);
+}
+
 std::vector<image_t> FeatureMatcherCache::GetImageIds() const {
   std::vector<image_t> image_ids;
   image_ids.reserve(images_cache_.size());
@@ -491,31 +498,54 @@ void GuidedSiftCPUFeatureMatcher::Run() {
 
     auto input_job = input_queue_->Pop();
     if (input_job.IsValid()) {
-      auto& data = input_job.Data();
+        auto& data = input_job.Data();
 
-      if (data.two_view_geometry.inlier_matches.size() <
-          static_cast<size_t>(options_.min_num_inliers)) {
+        if (data.two_view_geometry.inlier_matches.size() <
+            static_cast<size_t>(options_.min_num_inliers)) {
+            CHECK(output_queue_->Push(std::move(data)));
+            continue;
+        }
+
+        if (!cache_->ExistsKeypoints(data.image_id1) ||
+            !cache_->ExistsKeypoints(data.image_id2) ||
+            !cache_->ExistsDescriptors(data.image_id1) ||
+            !cache_->ExistsDescriptors(data.image_id2)) {
+            CHECK(output_queue_->Push(std::move(data)));
+            continue;
+        }
+    
+        auto getCamNameAndSuffix = [](const Image& image, std::string& cam_name, 
+                std::string& suffix) {
+            std::string image_name = image.Name();
+            size_t pos = image_name.find_last_of('/');
+            if (pos == std::string::npos){
+                cam_name = "";
+                suffix = image_name;
+            }
+            else{
+                cam_name = image_name.substr(0, pos);
+                suffix = image_name.substr(pos + 1, image_name.size() - pos - 1);
+            }
+        };
+
+        std::string cam_name1, suffix1, cam_name2, suffix2;
+        getCamNameAndSuffix(cache_->GetImage(data.image_id1), cam_name1, suffix1);
+        getCamNameAndSuffix(cache_->GetImage(data.image_id2), cam_name2, suffix2);
+
+        std::cout <<  cam_name1 << "," << cam_name2 << ", unguided inlier matches num: "
+                  << data.two_view_geometry.inlier_matches.size() << std::endl;
+
+        const auto keypoints1 = cache_->GetKeypoints(data.image_id1);
+        const auto keypoints2 = cache_->GetKeypoints(data.image_id2);
+        const auto descriptors1 = cache_->GetDescriptors(data.image_id1);
+        const auto descriptors2 = cache_->GetDescriptors(data.image_id2);
+        MatchGuidedSiftFeaturesCPU(options_, *keypoints1, *keypoints2,
+                                    *descriptors1, *descriptors2,
+                                    &data.two_view_geometry);
+        
+        std::cout <<  cam_name1 << "," << cam_name2 << ", guided inlier matches num: "
+                  << data.two_view_geometry.inlier_matches.size() << std::endl;
         CHECK(output_queue_->Push(std::move(data)));
-        continue;
-      }
-
-      if (!cache_->ExistsKeypoints(data.image_id1) ||
-          !cache_->ExistsKeypoints(data.image_id2) ||
-          !cache_->ExistsDescriptors(data.image_id1) ||
-          !cache_->ExistsDescriptors(data.image_id2)) {
-        CHECK(output_queue_->Push(std::move(data)));
-        continue;
-      }
-
-      const auto keypoints1 = cache_->GetKeypoints(data.image_id1);
-      const auto keypoints2 = cache_->GetKeypoints(data.image_id2);
-      const auto descriptors1 = cache_->GetDescriptors(data.image_id1);
-      const auto descriptors2 = cache_->GetDescriptors(data.image_id2);
-      MatchGuidedSiftFeaturesCPU(options_, *keypoints1, *keypoints2,
-                                 *descriptors1, *descriptors2,
-                                 &data.two_view_geometry);
-
-      CHECK(output_queue_->Push(std::move(data)));
     }
   }
 }
@@ -707,7 +737,7 @@ SiftFeatureMatcher::SiftFeatureMatcher(const SiftMatchingOptions& options,
           options_, cache, &matcher_queue_, &verifier_queue_));
     }
   }
-
+  // TODO: guided_matching
   verifiers_.reserve(num_threads);
   if (options_.guided_matching) {
     std::cout << "guided_matching = True" << std::endl;
@@ -852,39 +882,76 @@ void SiftFeatureMatcher::Match(
     const bool exists_inlier_matches =
         cache_->ExistsInlierMatches(image_pair.first, image_pair.second);
 
+    
+    // std::cout << cache_->GetImage(image_pair.first).Name() << "," << cache_->GetImage(image_pair.second).Name();
+    // printf(": %d,%d\n", exists_matches, exists_inlier_matches);
     // printf("exists_matches/inlier_matches: %d,%d\n", exists_matches, exists_inlier_matches);
 
-    if (exists_matches && exists_inlier_matches) {
-        continue;
+    // 根据是否 guided_matching，来选择不同的匹配流程
+    if (options_.guided_matching) {
+        if (exists_matches && exists_inlier_matches) {
+            continue;
+        }
+
+        num_outputs += 1;
+
+        internal::FeatureMatcherData data;
+        data.image_id1 = image_pair.first;
+        data.image_id2 = image_pair.second;
+
+        // TODO：可以在这里加一个判断，如果已经存在 two_view_geometry，就不用再计算了
+        if (exists_inlier_matches) {
+            // std::cout << cache_->GetImage(image_pair.first).Name() << "," \
+            //           << cache_->GetImage(image_pair.second).Name() << " " \
+            //           << "has prior two_view_geometry" << std::endl;
+            data.two_view_geometry = cache_->GetTwoViewGeometry(image_pair.first, image_pair.second);
+            // std::cout << "F = " << data.two_view_geometry.F << std::endl;
+            cache_->DeleteInlierMatches(image_pair.first, image_pair.second);
+            CHECK(guided_matcher_queue_.Push(std::move(data)));
+            continue;
+        }
+        
+        if (exists_matches) {
+            data.matches = cache_->GetMatches(image_pair.first, image_pair.second);
+            cache_->DeleteMatches(image_pair.first, image_pair.second);
+            CHECK(verifier_queue_.Push(std::move(data)));
+        } else {
+            // std::cout << "push matcher_queue_: " << num_outputs << std::endl;
+            CHECK(matcher_queue_.Push(std::move(data)));
+        }
+    }
+    else{
+        if (exists_matches && exists_inlier_matches) {
+            continue;
+        }
+        num_outputs += 1;
+        // If only one of the matches or inlier matches exist, we recompute them
+        // from scratch and delete the existing results. This must be done before
+        // pushing the jobs to the queue, otherwise database constraints might fail
+        // when writing an existing result into the database.
+
+        // 如果只有 matches 或者 inlier matches 存在，我们从头开始重新计算它们并删除现有的结果。
+        // 这必须在将任务推送到队列之前完成，否则在将现有结果写入数据库时可能会导致数据库约束失败。
+
+        if (exists_inlier_matches) {
+            cache_->DeleteInlierMatches(image_pair.first, image_pair.second);
+        }
+        
+        internal::FeatureMatcherData data;
+        data.image_id1 = image_pair.first;
+        data.image_id2 = image_pair.second;
+        
+        if (exists_matches) {
+            data.matches = cache_->GetMatches(image_pair.first, image_pair.second);
+            cache_->DeleteMatches(image_pair.first, image_pair.second);
+            CHECK(verifier_queue_.Push(std::move(data)));
+        } else {
+            // std::cout << "push matcher_queue_: " << num_outputs << std::endl;
+            CHECK(matcher_queue_.Push(std::move(data)));
+        }
+
     }
 
-    num_outputs += 1;
-
-    // If only one of the matches or inlier matches exist, we recompute them
-    // from scratch and delete the existing results. This must be done before
-    // pushing the jobs to the queue, otherwise database constraints might fail
-    // when writing an existing result into the database.
-
-    // 如果只有matches或者inlier matches存在，我们从头开始重新计算它们并删除现有的结果。
-    // 这必须在将任务推送到队列之前完成，否则在将现有结果写入数据库时可能会导致数据库约束失败。
-
-    if (exists_inlier_matches) {
-      cache_->DeleteInlierMatches(image_pair.first, image_pair.second);
-    }
-
-    internal::FeatureMatcherData data;
-    data.image_id1 = image_pair.first;
-    data.image_id2 = image_pair.second;
-
-    if (exists_matches) {
-        // TODO: 在此处计算两张图像间匹配点数量
-        data.matches = cache_->GetMatches(image_pair.first, image_pair.second);
-        cache_->DeleteMatches(image_pair.first, image_pair.second);
-        CHECK(verifier_queue_.Push(std::move(data)));
-    } else {
-        // std::cout << "push matcher_queue_: " << num_outputs << std::endl;
-        CHECK(matcher_queue_.Push(std::move(data)));
-    }
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -966,7 +1033,6 @@ void ExhaustiveFeatureMatcher::Run() {
                                 start_idx1 / block_size + 1, num_blocks,
                                 start_idx2 / block_size + 1, num_blocks)
                 << std::flush;
-        // TODO: match 有待阅读
         image_pairs.clear();
         for (size_t idx1 = start_idx1; idx1 <= end_idx1; ++idx1) {
         for (size_t idx2 = start_idx2; idx2 <= end_idx2; ++idx2) {
@@ -1019,14 +1085,103 @@ void SequentialFeatureMatcher::Run() {
 
   cache_.Setup();
 
-  const std::vector<image_t> ordered_image_ids = GetOrderedImageIds();
+  if (options_.multi_cam) {
+    std::vector<std::vector<image_t>> multi_cam_ordered_image_ids;
+    std::vector<std::pair<image_t, image_t>> same_snapshot_image_pairs;
+    GetMultiCamOrderedImageIds(multi_cam_ordered_image_ids, same_snapshot_image_pairs);
 
-  RunSequentialMatching(ordered_image_ids);
-  if (options_.loop_detection) {
-    RunLoopDetection(ordered_image_ids);
+    // 这里需要对同一时刻不同相机的图像进行匹配
+    std::cout << "same_snapshot_image_pairs.size(): " << same_snapshot_image_pairs.size() << std::endl;
+    matcher_.Match(same_snapshot_image_pairs);
+
+    std::cout << "multi_cam_ordered_image_ids.size(): ";
+    for(auto &ordered_image_ids: multi_cam_ordered_image_ids)
+    {
+        std::cout << ordered_image_ids.size() << ",";
+    }
+    std::cout << std::endl;
+    
+    for(auto &ordered_image_ids: multi_cam_ordered_image_ids)
+    {
+        RunSequentialMatching(ordered_image_ids);
+        if (options_.loop_detection) {
+            RunLoopDetection(ordered_image_ids);
+        }
+    }
   }
-
+  else{
+    const std::vector<image_t> ordered_image_ids = GetOrderedImageIds();
+    RunSequentialMatching(ordered_image_ids);
+    if (options_.loop_detection) {
+        RunLoopDetection(ordered_image_ids);
+    }
+  }
   GetTimer().PrintMinutes();
+}
+
+// TODO: 在这里获取了各个相机的序列ID和同一时刻的图像对
+void SequentialFeatureMatcher::GetMultiCamOrderedImageIds(
+    std::vector<std::vector<image_t>>& multi_cam_ordered_image_ids, 
+    std::vector<std::pair<image_t, image_t>>& same_snapshot_image_pairs){
+  const std::vector<image_t> image_ids = cache_.GetImageIds();
+
+    std::vector<Image> ordered_images;
+    ordered_images.reserve(image_ids.size());
+    for (const auto image_id : image_ids) {
+        ordered_images.push_back(cache_.GetImage(image_id));
+    }
+
+    std::sort(ordered_images.begin(), ordered_images.end(),
+                [](const Image& image1, const Image& image2) {
+                return image1.Name() < image2.Name();
+                });
+
+    multi_cam_ordered_image_ids.clear();
+    if (ordered_images.size() == 0) {
+        return;
+    }
+
+    auto getCamNameAndSuffix = [](const Image& image, std::string& cam_name, 
+            std::string& suffix) {
+        std::string image_name = image.Name();
+        size_t pos = image_name.find_last_of('/');
+        if (pos == std::string::npos){
+            cam_name = "";
+            suffix = image_name;
+        }
+        else{
+            cam_name = image_name.substr(0, pos);
+            suffix = image_name.substr(pos + 1, image_name.size() - pos - 1);
+        }
+    };
+  
+    std::string cur_cam_name, cam_name, suffix;
+    getCamNameAndSuffix(ordered_images[0], cur_cam_name, suffix);
+    multi_cam_ordered_image_ids.push_back(std::vector<image_t>());
+    std::unordered_map<std::string, std::vector<image_t>> suffix_to_image_ids;
+    for (const auto& image : ordered_images) {
+        getCamNameAndSuffix(image, cam_name, suffix);
+        if (cam_name != cur_cam_name) {
+            multi_cam_ordered_image_ids.push_back(std::vector<image_t>());
+            cur_cam_name = cam_name;
+        }
+        multi_cam_ordered_image_ids.back().push_back(image.ImageId());
+
+        // 后缀相同的图像进行匹配
+        if (suffix_to_image_ids.find(suffix) == suffix_to_image_ids.end()) {
+            suffix_to_image_ids[suffix] = std::vector<image_t>();
+        }
+        suffix_to_image_ids[suffix].push_back(image.ImageId());
+    }
+
+    same_snapshot_image_pairs.clear();
+    for (auto &pair: suffix_to_image_ids) {
+        for (size_t i = 0; i < pair.second.size(); ++i) {
+            for (size_t j = i + 1; j < pair.second.size(); ++j) {
+                same_snapshot_image_pairs.emplace_back(pair.second[i], pair.second[j]);
+            }
+        }
+    }
 }
 
 std::vector<image_t> SequentialFeatureMatcher::GetOrderedImageIds() const {
@@ -1042,12 +1197,6 @@ std::vector<image_t> SequentialFeatureMatcher::GetOrderedImageIds() const {
             [](const Image& image1, const Image& image2) {
               return image1.Name() < image2.Name();
             });
-    
-//   for (auto &ordered_images : ordered_images) {
-//     std::cout << ordered_images.Name() << std::endl;
-//   }
-//   std::cout << "Finish name print";
-//   exit(1);
 
   std::vector<image_t> ordered_image_ids;
   ordered_image_ids.reserve(image_ids.size());
@@ -1093,11 +1242,11 @@ void SequentialFeatureMatcher::RunSequentialMatching(
         break;
       }
     }
-
+    
     DatabaseTransaction database_transaction(&database_);
     matcher_.Match(image_pairs);
-
     PrintElapsedTime(timer);
+    std::cout << "image_pairs.size() = " << image_pairs.size() << std::endl;
   }
 }
 

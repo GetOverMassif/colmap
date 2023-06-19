@@ -167,6 +167,8 @@ void ExhaustiveMatchingTab::Run() {
 SequentialMatchingTab::SequentialMatchingTab(QWidget* parent,
                                              OptionManager* options)
     : FeatureMatchingTab(parent, options) {
+  options_widget_->AddOptionBool(
+      &options_->sequential_matching->multi_cam, "multi_cam");
   options_widget_->AddOptionInt(&options_->sequential_matching->overlap,
                                 "overlap");
   options_widget_->AddOptionBool(

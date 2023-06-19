@@ -190,12 +190,15 @@ class Reconstruction {
       const double p0 = 0.0, const double p1 = 1.0) const;
 
   // Apply the 3D similarity transformation to all images and points.
+  // 对所有的图像和点应用3D相似变换
   void Transform(const SimilarityTransform3& tform);
 
   // Creates a cropped reconstruction using the input bounds as corner points
   // of the bounding box containing the included 3D points of the new
   // reconstruction. Only the cameras and images of the included points are
   // registered.
+  // 使用输入边界作为包含新重建的3D点的边界框的角点，创建一个裁剪的重建
+  // 只有被包括的点的相机和图像才会被配准
   Reconstruction Crop(
       const std::pair<Eigen::Vector3d, Eigen::Vector3d>& bbox) const;
 
@@ -204,12 +207,17 @@ class Reconstruction {
   // merging the two clouds and their tracks. The coordinate frames of the two
   // reconstructions are aligned using the projection centers of common
   // registered images. Return true if the two reconstructions could be merged.
+  // 通过注册给定重建中注册了但这个重建中没有的图像、合并两个点云和他们的轨迹，将给定的重建合并到这个重建中,
+  // 两个重建的坐标系使用共同注册图像的投影中心对齐。
+  // 如果两个重建可以合并，则返回true。
   bool Merge(const Reconstruction& reconstruction,
              const double max_reproj_error);
 
   // Align the given reconstruction with a set of pre-defined camera positions.
   // Assuming that locations[i] gives the 3D coordinates of the center
   // of projection of the image with name image_names[i].
+  // 将给定的重建与一组预定义的相机位置对齐。
+  // 假设locations[i]给出了图像名为image_names[i]的图像的投影中心的3D坐标。
   template <bool kEstimateScale = true>
   bool Align(const std::vector<std::string>& image_names,
              const std::vector<Eigen::Vector3d>& locations,

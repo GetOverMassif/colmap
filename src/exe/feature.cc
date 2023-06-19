@@ -333,6 +333,8 @@ int RunSequentialMatcher(int argc, char** argv) {
   return EXIT_SUCCESS;
 }
 
+// int RunMultiCamSequentialMatcher(int )
+
 int RunSpatialMatcher(int argc, char** argv) {
   OptionManager options;
   options.AddDatabaseOptions();

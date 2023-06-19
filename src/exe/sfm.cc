@@ -340,6 +340,7 @@ int RunPointFiltering(int argc, char** argv) {
   return EXIT_SUCCESS;
 }
 
+// TODO: 查看这里有没有进一步优化图像位姿
 int RunPointTriangulator(int argc, char** argv) {
   std::string input_path;
   std::string output_path;

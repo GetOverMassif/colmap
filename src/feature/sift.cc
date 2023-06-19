@@ -1030,6 +1030,7 @@ void MatchSiftFeaturesCPU(const SiftMatchingOptions& match_options,
   MatchSiftFeaturesCPUFLANN(match_options, descriptors1, descriptors2, matches);
 }
 
+// TODO: 下面主要看这部分极限约束特征匹配的逻辑
 void MatchGuidedSiftFeaturesCPU(const SiftMatchingOptions& match_options,
                                 const FeatureKeypoints& keypoints1,
                                 const FeatureKeypoints& keypoints2,
@@ -1045,6 +1046,7 @@ void MatchGuidedSiftFeaturesCPU(const SiftMatchingOptions& match_options,
   const Eigen::Matrix3f H = two_view_geometry->H.cast<float>();
 
   std::function<bool(float, float, float, float)> guided_filter;
+  // 极线约束判断
   if (two_view_geometry->config == TwoViewGeometry::CALIBRATED ||
       two_view_geometry->config == TwoViewGeometry::UNCALIBRATED) {
     guided_filter = [&](const float x1, const float y1, const float x2,

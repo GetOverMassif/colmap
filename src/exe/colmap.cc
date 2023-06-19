@@ -137,6 +137,7 @@ int main(int argc, char** argv) {
   commands.emplace_back("project_generator", &RunProjectGenerator);
   commands.emplace_back("rig_bundle_adjuster", &RunRigBundleAdjuster);
   commands.emplace_back("sequential_matcher", &RunSequentialMatcher);
+//   commands.emplace_back("multi_cam_sequential_matcher", &RunMultiCamSequentialMatcher);
   commands.emplace_back("spatial_matcher", &RunSpatialMatcher);
   commands.emplace_back("stereo_fusion", &RunStereoFuser);
   commands.emplace_back("transitive_matcher", &RunTransitiveMatcher);

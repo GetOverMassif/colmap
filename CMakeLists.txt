@@ -37,6 +37,9 @@ set(COLMAP_VERSION "3.9")
 set(COLMAP_VERSION_NUMBER "3900")
 
 set(CMAKE_BUILD_TYPE Debug)
+
+set(CMAKE_CUDA_ARCHITECTURES "70")
+
 message(STATUS "CMAKE_BUILD_TYPE = " ${CMAKE_BUILD_TYPE})
 
 ################################################################################

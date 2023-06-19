@@ -55,6 +55,9 @@ struct ExhaustiveMatchingOptions {
 
 // 序列匹配选项
 struct SequentialMatchingOptions {
+  // 是否有多相机图像参与匹配
+  bool multi_cam = false;
+
   // Number of overlapping image pairs.
   // 重叠图像对的数量
   int overlap = 10;
@@ -201,6 +204,7 @@ class FeatureMatcherCache {
   FeatureKeypointsPtr GetKeypoints(const image_t image_id);
   FeatureDescriptorsPtr GetDescriptors(const image_t image_id);
   FeatureMatches GetMatches(const image_t image_id1, const image_t image_id2);
+  TwoViewGeometry GetTwoViewGeometry(const image_t image_id1, const image_t image_id2);
   std::vector<image_t> GetImageIds() const;
 
   bool ExistsKeypoints(const image_t image_id);
@@ -454,7 +458,9 @@ class SequentialFeatureMatcher : public Thread {
 
  private:
   void Run() override;
-
+  void GetMultiCamOrderedImageIds(
+    std::vector<std::vector<image_t>>& multi_cam_ordered_image_ids, 
+    std::vector<std::pair<image_t, image_t>>& same_snapshot_image_pairs);
   std::vector<image_t> GetOrderedImageIds() const;
   void RunSequentialMatching(const std::vector<image_t>& image_ids);
   void RunLoopDetection(const std::vector<image_t>& image_ids);

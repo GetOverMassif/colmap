@@ -226,7 +226,7 @@ void PrintComparisonSummary(std::ostream& out,
 // model must be provided either by a txt file (with each line being: img_name x
 // y z) or through a colmap database file containing a prior position for the
 // registered images.
-//
+// 
 // Required Options:
 // - input_path: path to initial reconstruction model
 // - output_path: path to store the aligned reconstruction model
@@ -261,6 +261,31 @@ void PrintComparisonSummary(std::ostream& out,
 // alignment
 // - robust_alignment_max_error: ransac error to use if robust alignment is
 // enabled
+
+// - 将给定的重建与用户提供的相机位置对齐（例如，可用于地理注册）。
+// - 用于进行重建模型对其的相机位置必须通过txt文件（每行为：img_name x y z）
+//   或通过包含注册图像的先验位置的colmap database文件来提供。
+// 
+// 所需选项：
+// - input_path: 初始重建模型的路径
+// - output_path: 存储对齐完的模型的路径
+// 可选选项：
+// - database_path: 存储重建图像先验位置的database文件路径
+// - ref_images_path: 存储重建图像先验位置的txt文件路径 (WARNING: provide only one of the above)
+// - ref_is_gps: if true, 先验位置将由 GPS (lat/lon/alt) 转换为 ECEF or ENU
+// - merge_image_and_ref_origins: if true, 重建结果将被移动，将第一个先验位置作为相机位置。
+// - transform_path: 存储用于对齐的 Sim3 变换的路径
+// - alignment_type:
+//    > plane: 与重建主平面对齐
+//    > ecef: 与 ecef (地心地固)坐标系对齐. (requires gps coords. or user provided ecef coords.)
+//    > enu: 与 enu (东北天)坐标系对齐. (requires gps coords. or user provided enu coords.)
+//    > enu-plane: align to ecef and then to enu plane (requires gps coords. or user provided ecef coords.)
+//    > enu-plane-unscaled: same as above, 但是对齐重建时不应用计算出的尺度
+//    > custom: align to provided coords.
+// - min_common_images: 用于执行估计对齐的具有先验位置的图像的最小数量
+// - estimate_scale: if true, 应用对齐重建过程中计算的尺度
+// - robust_alignment: if true, 使用一个基于RANSAC的估计以进行鲁棒的对齐
+// - robust_alignment_max_error: ransac error to use if robust alignment is enabled
 int RunModelAligner(int argc, char** argv) {
   std::string input_path;
   std::string output_path;

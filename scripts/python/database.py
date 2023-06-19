@@ -220,6 +220,7 @@ class COLMAPDatabase(sqlite3.Connection):
             matches = matches[:,::-1]
 
         pair_id = image_ids_to_pair_id(image_id1, image_id2)
+        # print(f"image_id1, image_id2, pair_id: {image_id1}, {image_id2}, {pair_id}")
         matches = np.asarray(matches, np.uint32)
         F = np.asarray(F, dtype=np.float64)
         E = np.asarray(E, dtype=np.float64)
@@ -260,6 +261,14 @@ class COLMAPDatabase(sqlite3.Connection):
         print(table)
         print(f"num_two_view_geometries = {cnt}")
 
+    def exist_two_view_geometries(self, image_id1, image_id2):
+        pair_id = image_ids_to_pair_id(image_id1, image_id2)
+        cursor = self.execute("SELECT * FROM two_view_geometries WHERE pair_id = ?", (pair_id,))
+        if len(cursor.fetchall()) > 0:
+            return True
+        else:
+            return False
+
     def update_camera(self, camera_id, model, params,
                    prior_focal_length=False):
         params = np.asarray(params, np.float64)
@@ -267,8 +276,32 @@ class COLMAPDatabase(sqlite3.Connection):
             "UPDATE cameras SET model=?, params=?, prior_focal_length=? \
                 WHERE camera_id = ?",
             (model, array_to_blob(params), prior_focal_length, camera_id))
-    
+
+    def update_two_view_geometry(self, image_id1, image_id2, matches,
+                              F=np.eye(3), E=np.eye(3), H=np.eye(3),
+                              qvec=np.array([1.0, 0.0, 0.0, 0.0]),
+                              tvec=np.zeros(3), config=2):
+        assert(len(matches.shape) == 2)
+        assert(matches.shape[1] == 2)
+
+        if image_id1 > image_id2:
+            matches = matches[:,::-1]
+
+        pair_id = image_ids_to_pair_id(image_id1, image_id2)
+        # print(f"image_id1, image_id2, pair_id: {image_id1}, {image_id2}, {pair_id}")
+        matches = np.asarray(matches, np.uint32)
+        F = np.asarray(F, dtype=np.float64)
+        E = np.asarray(E, dtype=np.float64)
+        H = np.asarray(H, dtype=np.float64)
+        qvec = np.asarray(qvec, dtype=np.float64)
+        tvec = np.asarray(tvec, dtype=np.float64)
+        self.execute(
+            "UPDATE two_view_geometries SET config=?, matches=?, F=?, E=?  \
+                WHERE pair_id = ?",
+            (config, array_to_blob(matches), array_to_blob(F), array_to_blob(E),pair_id))
+
     def get_imageCamerasId(self):
+        """ return {image_id: camera_id}"""
         cam_info_pairs = {}
         cursor = self.execute("SELECT * FROM images")
         for row in cursor:
@@ -280,6 +313,7 @@ class COLMAPDatabase(sqlite3.Connection):
         return cam_info_pairs
     
     def get_ImageCam_pairs(self):
+        """ return {image_id: [stamp, cam]}"""
         image_cam_pairs = {}
         cursor = self.execute("SELECT * FROM images")
         for row in cursor:
