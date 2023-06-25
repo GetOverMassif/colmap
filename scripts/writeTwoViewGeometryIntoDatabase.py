@@ -113,14 +113,8 @@ def main(database_file, intr_file, extr_file):
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description='需要传入一个database文件路径和一个相机内参文件路径')
-    default_database_dir = f'/mnt/dataDisk/reconstructions/20220919T090000_LJ1EFAUU5MG068486/0_allcam_snap'
-    default_intr_file_path = f'/mnt/dataDisk/save_masks/20220919T090000_LJ1EFAUU5MG068486'
-    default_extr_file_path = f'/mnt/dataDisk/save_masks/20220919T090000_LJ1EFAUU5MG068486/0'
-    parser.add_argument('-d','--database_dir', type=str, default=default_database_dir, help='database文件路径')
-    parser.add_argument('-i','--intr_file_path', type=str, default=default_intr_file_path, help='相机内参文件路径')
-    parser.add_argument('-e','--extr_file_path', type=str, default=default_extr_file_path, help='相机外参文件路径')
+    parser.add_argument('-d','--database_file', type=str, required=True, help='database文件路径')
+    parser.add_argument('-i','--intr_file', type=str, required=True, help='相机内参文件路径')
+    parser.add_argument('-e','--extr_file', type=str, required=True, help='相机外参文件路径')
     args = parser.parse_args()
-    database_file = os.path.join(args.database_dir, 'database.db')
-    intr_file = os.path.join(args.intr_file_path, 'intr_params.txt')
-    extr_file = os.path.join(args.extr_file_path, 'rig_config.json')
-    main(database_file, intr_file, extr_file)
+    main(args.database_file, args.intr_file, args.extr_file)

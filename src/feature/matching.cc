@@ -1104,9 +1104,14 @@ void SequentialFeatureMatcher::Run() {
     for(auto &ordered_image_ids: multi_cam_ordered_image_ids)
     {
         RunSequentialMatching(ordered_image_ids);
-        if (options_.loop_detection) {
-            RunLoopDetection(ordered_image_ids);
-        }
+    }
+    std::vector<image_t> all_image_ids;
+    for(auto &ordered_image_ids: multi_cam_ordered_image_ids)
+    {
+        all_image_ids.insert(all_image_ids.end(), ordered_image_ids.begin(), ordered_image_ids.end());
+    }
+    if (options_.loop_detection) {
+        RunLoopDetection(all_image_ids);
     }
   }
   else{

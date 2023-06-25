@@ -39,9 +39,11 @@ def camTodatabase(database_path, cameraIntr_path):
     # parser.add_argument("--database_path", default="database.db")
     # args = parser.parse_args()
 
-    if os.path.exists(database_path) == False:
+    if not os.path.exists(database_path):
         print("ERROR: database path dosen't exist -- please check database.db.")
         return
+    print(f"database_path = {database_path}")
+    print(f"cameraIntr_path = {cameraIntr_path}")
     # Open the database.
     db = COLMAPDatabase.connect(database_path)
 
@@ -66,13 +68,10 @@ def camTodatabase(database_path, cameraIntr_path):
 if __name__ == "__main__":
     print(f"{'='*78}\nImport CameraIntr into Database\n{'='*78}\n")
     parser = argparse.ArgumentParser(description='需要传入一个database文件路径和一个相机内参文件路径')
-    parser.add_argument('database_dir', type=str, help='database文件路径')
-    parser.add_argument('cameraIntr_dir', type=str, help='相机内参文件路径')
+    parser.add_argument('database_path', type=str, help='database文件路径')
+    parser.add_argument('cameraIntr_path', type=str, help='相机内参文件路径')
     args = parser.parse_args()
 
-    # database_dir = f"/home/nio/data/colmap/NIO_data/20211221T165619_8N1800__1640077220.000000__1640077240.000000/0/new_ws"
-    # cameraIntr_dir = f"/home/nio/data/save_masks/20211221T165619_8N1800__1640077220.000000__1640077240.000000"
-
-    database_path = f"{args.database_dir}/database.db"
-    cameraIntr_path = f"{args.cameraIntr_dir}/intr_params.txt"
-    camTodatabase(database_path, cameraIntr_path)
+    # database_path = f"{args.database_dir}/database.db"
+    # cameraIntr_path = f"{args.cameraIntr_dir}/intr_params.txt"
+    camTodatabase(args.database_path, args.cameraIntr_path)

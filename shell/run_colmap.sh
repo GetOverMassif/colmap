@@ -47,7 +47,9 @@ colmap sequential_matcher \
     --SiftMatching.guided_matching 1 \
     --SiftMatching.max_error 10 \
     --SequentialMatching.overlap 10 \
-    --SequentialMatching.quadratic_overlap 0
+    --SequentialMatching.quadratic_overlap 0 \
+    --SequentialMatching.loop_detection 1 \
+    --SequentialMatching.vocab_tree_path /mnt/dataDisk/colmap/VocabTree/vocab_tree_flickr100K_words1M.bin
 
 mkdir -p $database_path/sparse
 
@@ -57,6 +59,12 @@ colmap mapper \
     --output_path $database_path/sparse \
     --Mapper.extract_colors 1 \
     --Mapper.num_threads $num_threads
+
+# 尺度恢复
+
+mv 
+python $COLAMP_PATH/test/ExtractRigConfigFromMatches.py \
+
 
     
 
