@@ -29,6 +29,9 @@
 //
 // Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
 
+#include <iostream>
+#include <fstream>
+
 #include "exe/sfm.h"
 
 #include <boost/property_tree/json_parser.hpp>
@@ -201,6 +204,24 @@ int RunMapper(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
+    // 写入log文件
+    std::cout << "output_path = " << output_path << std::endl;
+    std::string mapper_log_file = output_path + "/mapper.log";
+    std::ofstream* filePtr = new std::ofstream();
+    filePtr->open(mapper_log_file, std::ios::out);
+
+    // 检查文件是否成功打开
+    if (filePtr->is_open()) {
+        // 写入数据到文件
+        (*filePtr) << "Hello, World!" << std::endl;
+        (*filePtr) << "This is a text file." << std::endl;
+
+        std::cout << "File opened successfully." << std::endl;
+    } else {
+        std::cout << "Failed to open the file." << std::endl;
+        return EXIT_FAILURE;
+    }
+
   if (!image_list_path.empty()) {
     const auto image_names = ReadTextFileLines(image_list_path);
     options.mapper->image_names =
@@ -220,6 +241,7 @@ int RunMapper(int argc, char** argv) {
                                      *options.database_path,
                                      &reconstruction_manager);
 
+  mapper.SetLogFilePtr(filePtr);
   // In case a new reconstruction is started, write results of individual sub-
   // models to as their reconstruction finishes instead of writing all results
   // after all reconstructions finished.
@@ -259,6 +281,9 @@ int RunMapper(int argc, char** argv) {
   if (input_path != "" && reconstruction_manager.Size() > 0) {
     reconstruction_manager.Get(0).Write(output_path);
   }
+
+  // 关闭文件
+  filePtr->close();
 
   return EXIT_SUCCESS;
 }

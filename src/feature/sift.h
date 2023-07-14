@@ -43,9 +43,11 @@ namespace colmap {
 
 struct SiftExtractionOptions {
   // Number of threads for feature extraction.
+  // 特征提取的线程数量
   int num_threads = -1;
 
   // Whether to use the GPU for feature extraction.
+  // 是否使用GPU进行特征提取
   bool use_gpu = true;
 
   // Index of the GPU used for feature extraction. For multi-GPU extraction,
@@ -53,34 +55,44 @@ struct SiftExtractionOptions {
   std::string gpu_index = "-1";
 
   // Maximum image size, otherwise image will be down-scaled.
+  // 最大图像尺寸，否则图像将被缩小。
   int max_image_size = 3200;
 
   // Maximum number of features to detect, keeping larger-scale features.
+  // 最大要检测的特征数量，保留较大尺度的特征。
   int max_num_features = 8192;
 
   // First octave in the pyramid, i.e. -1 upsamples the image by one level.
+  // 金字塔中的第一个八度，-1表示将图像上采样一级。
   int first_octave = -1;
 
   // Number of octaves.
+  // 八度数量
   int num_octaves = 4;
 
   // Number of levels per octave.
+  // 每个八度的层数
   int octave_resolution = 3;
 
   // Peak threshold for detection.
+  // 检测的峰值阈值
   double peak_threshold = 0.02 / octave_resolution;
 
   // Edge threshold for detection.
+  // 检测的边缘阈值
   double edge_threshold = 10.0;
 
   // Estimate affine shape of SIFT features in the form of oriented ellipses as
   // opposed to original SIFT which estimates oriented disks.
+  // SIFT特征的仿射形状估计，以有向椭圆的形式，而不是原始的SIFT，它估计有向圆盘。
   bool estimate_affine_shape = false;
 
   // Maximum number of orientations per keypoint if not estimate_affine_shape.
+  // 如果不估计仿射形状，则每个关键点的最大方向数量。
   int max_num_orientations = 2;
 
   // Fix the orientation to 0 for upright features.
+  // 对于直立的特征，将方向固定为0。
   bool upright = false;
 
   // Whether to adapt the feature detection depending on the image darkness.
@@ -94,6 +106,10 @@ struct SiftExtractionOptions {
   // outperform other SIFT variants and learned descriptors in "Comparative
   // Evaluation of Hand-Crafted and Learned Local Features", Schönberger,
   // Hardmeier, Sattler, Pollefeys, CVPR 2016.
+  // 域大小池化参数。域大小池化在检测到的尺度周围的多个尺度上计算平均SIFT描述符。
+  // 这是在“局部描述符和网络架构中的域大小池化”中提出的，J. Dong和S. Soatto，CVPR 2015。
+  // 这已经被证明优于其他SIFT变体和学习描述符在“手工制作和学习本地特征的比较评估”中，
+  // Schönberger，Hardmeier，Sattler，Pollefeys，CVPR 2016。
   bool domain_size_pooling = false;
   double dsp_min_scale = 1.0 / 6.0;
   double dsp_max_scale = 3.0;

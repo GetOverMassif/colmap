@@ -532,8 +532,8 @@ void GuidedSiftCPUFeatureMatcher::Run() {
         getCamNameAndSuffix(cache_->GetImage(data.image_id1), cam_name1, suffix1);
         getCamNameAndSuffix(cache_->GetImage(data.image_id2), cam_name2, suffix2);
 
-        std::cout <<  cam_name1 << "," << cam_name2 << ", unguided inlier matches num: "
-                  << data.two_view_geometry.inlier_matches.size() << std::endl;
+        // std::cout <<  cam_name1 << "," << cam_name2 << ", unguided inlier matches num: "
+        //           << data.two_view_geometry.inlier_matches.size() << std::endl;
 
         const auto keypoints1 = cache_->GetKeypoints(data.image_id1);
         const auto keypoints2 = cache_->GetKeypoints(data.image_id2);
@@ -543,8 +543,8 @@ void GuidedSiftCPUFeatureMatcher::Run() {
                                     *descriptors1, *descriptors2,
                                     &data.two_view_geometry);
         
-        std::cout <<  cam_name1 << "," << cam_name2 << ", guided inlier matches num: "
-                  << data.two_view_geometry.inlier_matches.size() << std::endl;
+        // std::cout <<  cam_name1 << "," << cam_name2 << ", guided inlier matches num: "
+        //           << data.two_view_geometry.inlier_matches.size() << std::endl;
         CHECK(output_queue_->Push(std::move(data)));
     }
   }
@@ -1251,7 +1251,7 @@ void SequentialFeatureMatcher::RunSequentialMatching(
     DatabaseTransaction database_transaction(&database_);
     matcher_.Match(image_pairs);
     PrintElapsedTime(timer);
-    std::cout << "image_pairs.size() = " << image_pairs.size() << std::endl;
+    // std::cout << "image_pairs.size() = " << image_pairs.size() << std::endl;
   }
 }
 

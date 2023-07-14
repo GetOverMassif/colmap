@@ -38,48 +38,61 @@
 
 namespace colmap {
 
+// TODO：待看 三角化 参数
 // Class that triangulates points during the incremental reconstruction.
 // It holds the state and provides all functionality for triangulation.
 class IncrementalTriangulator {
  public:
   struct Options {
     // Maximum transitivity to search for correspondences.
+    // 用于搜索对应点的最大传递性
     int max_transitivity = 1;
 
     // Maximum angular error to create new triangulations.
+    // 用于创建新三角化的最大角度误差
     double create_max_angle_error = 2.0;
 
     // Maximum angular error to continue existing triangulations.
+    // 用于继续现有三角化的最大角度误差
     double continue_max_angle_error = 2.0;
 
     // Maximum reprojection error in pixels to merge triangulations.
+    // 用于合并三角化的最大重投影误差（像素单位）
     double merge_max_reproj_error = 4.0;
 
     // Maximum reprojection error to complete an existing triangulation.
+    // 用于完成现有三角化的最大重投影误差
     double complete_max_reproj_error = 4.0;
 
     // Maximum transitivity for track completion.
+    // 用于完整轨迹的最大传递性
     int complete_max_transitivity = 5;
 
     // Maximum angular error to re-triangulate under-reconstructed image pairs.
+    // 用于重新三角化欠重建图像对的最大角度误差
     double re_max_angle_error = 5.0;
 
     // Minimum ratio of common triangulations between an image pair over the
     // number of correspondences between that image pair to be considered
     // as under-reconstructed.
+    // 用于被认为是欠重建的图像对的公共三角化的最小比率
     double re_min_ratio = 0.2;
 
     // Maximum number of trials to re-triangulate an image pair.
+    // 用于重新三角化图像对的最大尝试次数
     int re_max_trials = 1;
 
     // Minimum pairwise triangulation angle for a stable triangulation.
+    // 用于稳定三角化的最小成对三角化角度
     double min_angle = 1.5;
 
     // Whether to ignore two-view tracks.
+    // 是否忽略两视图track
     bool ignore_two_view_tracks = true;
 
     // Thresholds for bogus camera parameters. Images with bogus camera
     // parameters are ignored in triangulation.
+    // 用于伪相机参数的阈值。具有伪相机参数的图像将在三角化中被忽略。
     double min_focal_length_ratio = 0.1;
     double max_focal_length_ratio = 10.0;
     double max_extra_param = 1.0;

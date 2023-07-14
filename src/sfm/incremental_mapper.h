@@ -41,6 +41,8 @@
 
 namespace colmap {
 
+
+// TODO: 待看mapper参数
 // Class that provides all functionality for the incremental reconstruction
 // procedure. Example usage:
 //
@@ -65,61 +67,79 @@ class IncrementalMapper {
  public:
   struct Options {
     // Minimum number of inliers for initial image pair.
+    // 初始图像对的最小内点数
     int init_min_num_inliers = 100;
 
     // Maximum error in pixels for two-view geometry estimation for initial
     // image pair.
+    // 初始图像对的两视图几何估计的最大像素误差
     double init_max_error = 4.0;
 
     // Maximum forward motion for initial image pair.
+    // 初始图像对的最大前向运动
     double init_max_forward_motion = 0.95;
 
     // Minimum triangulation angle for initial image pair.
+    // 初始图像对的最小三角化角度
     double init_min_tri_angle = 16.0;
 
     // Maximum number of trials to use an image for initialization.
+    // 使用一张图像进行初始化的最大试验次数
     int init_max_reg_trials = 2;
 
     // Maximum reprojection error in absolute pose estimation.
+    // 绝对姿态估计中的最大重投影误差
     double abs_pose_max_error = 12.0;
 
     // Minimum number of inliers in absolute pose estimation.
+    // 绝对姿态估计中的最小内点数
     int abs_pose_min_num_inliers = 30;
 
     // Minimum inlier ratio in absolute pose estimation.
+    // 绝对姿态估计中的最小内点比率
     double abs_pose_min_inlier_ratio = 0.25;
 
     // Whether to estimate the focal length in absolute pose estimation.
+    // 是否在绝对姿态估计中估计焦距
     bool abs_pose_refine_focal_length = true;
 
     // Whether to estimate the extra parameters in absolute pose estimation.
+    // 是否在绝对姿态估计中估计额外参数
     bool abs_pose_refine_extra_params = true;
 
     // Number of images to optimize in local bundle adjustment.
+    // 局部BA中要优化的图像数量
     int local_ba_num_images = 6;
 
     // Minimum triangulation for images to be chosen in local bundle adjustment.
+    // 局部BA中要选择的图像的最小三角化角度
     double local_ba_min_tri_angle = 6;
 
     // Thresholds for bogus camera parameters. Images with bogus camera
     // parameters are filtered and ignored in triangulation.
+    // 伪相机参数的阈值。具有伪相机参数的图像将被过滤并在三角化中被忽略。
     double min_focal_length_ratio = 0.1;  // Opening angle of ~130deg
     double max_focal_length_ratio = 10;   // Opening angle of ~5deg
     double max_extra_param = 1;
 
     // Maximum reprojection error in pixels for observations.
+    // 观测的最大重投影误差（像素单位）
     double filter_max_reproj_error = 4.0;
 
     // Minimum triangulation angle in degrees for stable 3D points.
+    // 稳定的3D点的最小三角化角度（度）
     double filter_min_tri_angle = 1.5;
 
     // Maximum number of trials to register an image.
+    // 注册图像的最大试验次数
     int max_reg_trials = 3;
 
     // If reconstruction is provided as input, fix the existing image poses.
+    // 如果重建作为输入提供，则固定现有图像姿势。
     bool fix_existing_images = false;
 
     // Number of threads.
+    // 线程数
     int num_threads = -1;
 
     // Method to find and select next best image to register.
@@ -229,7 +249,13 @@ class IncrementalMapper {
   // Clear the collection of changed 3D points.
   void ClearModifiedPoints3D();
 
+  void SetLogFilePtr(std::ofstream* log_file_ptr) {
+    log_file_ptr_ = log_file_ptr;
+  };
+
  private:
+  std::ofstream* log_file_ptr_;
+
   // Find seed images for incremental reconstruction. Suitable seed images have
   // a large number of correspondences and have camera calibration priors. The
   // returned list is ordered such that most suitable images are in the front.

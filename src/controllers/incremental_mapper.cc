@@ -71,6 +71,7 @@ void IterativeLocalRefinement(const IncrementalMapperOptions& options,
                               IncrementalMapper* mapper) {
   auto ba_options = options.LocalBundleAdjustment();
   for (int i = 0; i < options.ba_local_max_refinements; ++i) {
+    // TODO: 待看，如何调用 AdjustLocalBundle
     const auto report = mapper->AdjustLocalBundle(
         options.Mapper(), ba_options, options.Triangulation(), image_id,
         mapper->GetModifiedPoints3D());
@@ -372,6 +373,8 @@ void IncrementalMapperController::Reconstruct(
 
   IncrementalMapper mapper(&database_cache_);
 
+  mapper.SetLogFilePtr(log_file_ptr_);
+
   // Is there a sub-model before we start the reconstruction? I.e. the user
   // has imported an existing reconstruction.
   // 在我们开始重建之前是否已经有一个子模型？例如用户导入了一个已有的重建结果。
@@ -408,10 +411,12 @@ void IncrementalMapperController::Reconstruct(
 
       // Try to find good initial pair.
       if (options_->init_image_id1 == -1 || options_->init_image_id2 == -1) {
+        (*log_file_ptr_) << "Finding good initial image pair" << std::endl;
         PrintHeading1("Finding good initial image pair");
         const bool find_init_success = mapper.FindInitialImagePair(
             init_mapper_options, &image_id1, &image_id2);
         if (!find_init_success) {
+          (*log_file_ptr_) << "  => No good initial image pair found." << std::endl;
           std::cout << "  => No good initial image pair found." << std::endl;
           mapper.EndReconstruction(kDiscardReconstruction);
           reconstruction_manager_->Delete(reconstruction_idx);
@@ -430,11 +435,19 @@ void IncrementalMapperController::Reconstruct(
         }
       }
 
+      std::string image_name1 = reconstruction.Image(image_id1).Name();
+      std::string image_name2 = reconstruction.Image(image_id2).Name();
+      
+      (*log_file_ptr_) << StringPrintf("Initializing with image pair #%d and #%d",
+                                 image_id1, image_id2) << ", "
+                       << image_name1 << ", " << image_name2 << std::endl;
+
       PrintHeading1(StringPrintf("Initializing with image pair #%d and #%d",
                                  image_id1, image_id2));
       const bool reg_init_success = mapper.RegisterInitialImagePair(
           init_mapper_options, image_id1, image_id2);
       if (!reg_init_success) {
+        (*log_file_ptr_) << "  => Initialization failed" << std::endl;
         std::cout << "  => Initialization failed - possible solutions:"
                   << std::endl
                   << "     - try to relax the initialization constraints"
@@ -496,9 +509,22 @@ void IncrementalMapperController::Reconstruct(
         break;
       }
 
+      
+
+      (*log_file_ptr_) << "next_images.size() = " << next_images.size() << std::endl;
+      for (size_t i = 0; i < next_images.size(); ++i) {
+        (*log_file_ptr_) << "next_images[" << i << "] = " << reconstruction.Image(next_images[i]).Name() << std::endl;
+      }
+    
+      // TODO: 希望记录包含失败尝试记录的重建过程
       for (size_t reg_trial = 0; reg_trial < next_images.size(); ++reg_trial) {
         const image_t next_image_id = next_images[reg_trial];
         const Image& next_image = reconstruction.Image(next_image_id);
+
+        (*log_file_ptr_) << "Registering image " << next_image.Name() << std::endl;
+        (*log_file_ptr_) << StringPrintf("  => Image sees %d / %d points",
+                                  next_image.NumVisiblePoints3D(),
+                                  next_image.NumObservations())  << std::endl;
 
         PrintHeading1(StringPrintf("Registering image #%d (%d)", next_image_id,
                                    reconstruction.NumRegImages() + 1));
@@ -510,8 +536,10 @@ void IncrementalMapperController::Reconstruct(
 
         reg_next_success =
             mapper.RegisterNextImage(options_->Mapper(), next_image_id);
+        
 
         if (reg_next_success) {
+          (*log_file_ptr_) << "  => reg_next_success " << std::endl;
           TriangulateImage(*options_, next_image, &mapper);
           IterativeLocalRefinement(*options_, next_image_id, &mapper);
 
@@ -541,9 +569,10 @@ void IncrementalMapperController::Reconstruct(
           }
 
           Callback(NEXT_IMAGE_REG_CALLBACK);
-
+          // 每次注册成功后，都会先退出这个循环再尝试下一个图像
           break;
         } else {
+          (*log_file_ptr_) << "  => Could not register, trying another image." << std::endl;
           std::cout << "  => Could not register, trying another image."
                     << std::endl;
 
@@ -557,7 +586,10 @@ void IncrementalMapperController::Reconstruct(
             break;
           }
         }
+        
       }
+
+      (*log_file_ptr_) << std::endl;
 
       const size_t max_model_overlap =
           static_cast<size_t>(options_->max_model_overlap);

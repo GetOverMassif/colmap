@@ -199,6 +199,7 @@ bool IncrementalMapper::FindInitialImagePair(const Options& options,
   return false;
 }
 
+// TODO: 查看如何寻找接下来的图像
 std::vector<image_t> IncrementalMapper::FindNextImages(const Options& options) {
   CHECK_NOTNULL(reconstruction_);
   CHECK(options.Check());
@@ -218,28 +219,39 @@ std::vector<image_t> IncrementalMapper::FindNextImages(const Options& options) {
 
   std::vector<std::pair<image_t, float>> image_ranks;
   std::vector<std::pair<image_t, float>> other_image_ranks;
-
+  
   // Append images that have not failed to register before.
+  // 添加之前没有失败注册的图像
   for (const auto& image : reconstruction_->Images()) {
+    (*log_file_ptr_) << "checking image " << image.second.Name() << ", ";
     // Skip images that are already registered.
     if (image.second.IsRegistered()) {
+    //   (*log_file_ptr_) << "continue because IsRegistered " std::endl;
       continue;
     }
 
     // Only consider images with a sufficient number of visible points.
+    // 只考虑有足够数量可见点的图像
     if (image.second.NumVisiblePoints3D() <
         static_cast<size_t>(options.abs_pose_min_num_inliers)) {
+      (*log_file_ptr_) << "continue because NumVisiblePoints3D = " 
+        << image.second.NumVisiblePoints3D() << " < " 
+        << options.abs_pose_min_num_inliers << std::endl;
       continue;
     }
 
     // Only try registration for a certain maximum number of times.
+    // 只尝试一定次数的注册
     const size_t num_reg_trials = num_reg_trials_[image.first];
     if (num_reg_trials >= static_cast<size_t>(options.max_reg_trials)) {
+      (*log_file_ptr_) << "continue because limited registration trial time = "
+        << options.max_reg_trials << std::endl;
       continue;
     }
 
     // If image has been filtered or failed to register, place it in the
     // second bucket and prefer images that have not been tried before.
+    // 如果图像已被过滤或注册失败，则将其放置在第二个桶中，并优先考虑以前未尝试过的图像
     const float rank = rank_image_func(image.second);
     if (filtered_images_.count(image.first) == 0 && num_reg_trials == 0) {
       image_ranks.emplace_back(image.first, rank);
