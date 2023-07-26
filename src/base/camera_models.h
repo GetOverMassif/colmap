@@ -126,7 +126,8 @@ static const int kInvalidCameraModelId = -1;
   CAMERA_MODEL_CASE(OpenCVFisheyeCameraModel)       \
   CAMERA_MODEL_CASE(FullOpenCVCameraModel)          \
   CAMERA_MODEL_CASE(FOVCameraModel)                 \
-  CAMERA_MODEL_CASE(ThinPrismFisheyeCameraModel)
+  CAMERA_MODEL_CASE(ThinPrismFisheyeCameraModel)    \
+  CAMERA_MODEL_CASE(OmniFisheyeCameraModel)
 #endif
 
 #ifndef CAMERA_MODEL_SWITCH_CASES
@@ -347,6 +348,28 @@ struct RadialFisheyeCameraModel
 struct ThinPrismFisheyeCameraModel
     : public BaseCameraModel<ThinPrismFisheyeCameraModel> {
   CAMERA_MODEL_DEFINITIONS(10, "THIN_PRISM_FISHEYE", 12)
+};
+
+// New Add
+// Scaramuzza's omnidirectional fish-eye camera model.
+//
+    // Based on the pinhole camera model. Additionally models radial distortion
+    // (up to 4th degree of coefficients). Suitable for
+    // large radial distortions of fish-eye cameras.
+
+//    "A Flexible Technique for Accurate Omnidirectional Camera Calibration and Structure from Motion",
+//    Scaramuzza et al., 2006.
+// 
+// Parameter list is expected in the following order:
+//    0~4: xc, yc, c, d, e
+//    5~14: inv_pol1, inv_pol2, inv_pol3, inv_pol4, inv_pol5, inv_pol6, inv_pol7, inv_pol8, inv_pol9, inv_pol10
+//    15~19: pol1, pol2, pol3, pol4, pol5
+//
+    // See
+    // http://docs.opencv.org/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html
+struct OmniFisheyeCameraModel
+    : public BaseCameraModel<OmniFisheyeCameraModel> {
+  CAMERA_MODEL_DEFINITIONS(11, "OMNI_FISHEYE", 20)
 };
 
 // Check whether camera model with given name or identifier exists.
@@ -984,6 +1007,154 @@ void OpenCVFisheyeCameraModel::Distortion(const T* extra_params, const T u,
     *dv = T(0);
   }
 }
+
+// New Add
+////////////////////////////////////////////////////////////////////////////////
+// OmniFisheyeCameraModel
+
+std::string OmniFisheyeCameraModel::InitializeParamsInfo() {
+  return "xc, yc, c, d, e, inv_pol(0~9), pol(0~4)";
+}
+
+std::vector<size_t> OmniFisheyeCameraModel::InitializeFocalLengthIdxs() {
+  return {5};
+}
+
+std::vector<size_t> OmniFisheyeCameraModel::InitializePrincipalPointIdxs() {
+  return {0, 1};
+}
+
+std::vector<size_t> OmniFisheyeCameraModel::InitializeExtraParamsIdxs() {
+  return {2,3,4,6,7,8,9,10,11,12,13,14,15,16,17,18,19};
+}
+
+// 待看是否需要修改
+std::vector<double> OmniFisheyeCameraModel::InitializeParams(
+    const double focal_length, const size_t width, const size_t height) {
+  return {width / 2.0, height / 2.0, 1, 0, 0, \
+          1.0  * focal_length, 0.8 *focal_length, 0.13 * focal_length, 0.036 * focal_length, 0.06 * focal_length, \
+          0.06 * focal_length, 0, 0, 0, 0, \
+          -focal_length, 0, 0, 0, 0};
+}
+
+template <typename T>
+void OmniFisheyeCameraModel::WorldToImage(const T* params, const T u,
+                                          const T v, T* x, T* y) {
+  const T xc = params[0];
+  const T yc = params[1];
+  const T c = params[2];
+  const T d = params[3];
+  const T e = params[4];
+  const T* inv_pols = &params[5];
+
+  T norm = ceres::sqrt(u * u + v * v);
+
+  if (norm==T(0)) {
+    *x = xc;
+    *y = yc;
+    return;
+  }
+
+  T invnorm, theta, t, t_i, rho, xd, yd;
+  theta = ceres::atan2(T(1), norm);
+  t = theta;
+  t_i = T(1);
+  invnorm = T(1) / norm;
+  rho = inv_pols[0];
+  
+  for (int i = 1; i <= 10; i++) {
+    t_i *= t;
+    rho += t_i * inv_pols[i];
+  }
+
+  xd = u * rho * invnorm;
+  yd = v * rho * invnorm;
+
+  *x = xd*c + yd*d + xc;
+  *y = xd*e + yd   + yc;
+  return;
+}
+
+template <typename T>
+void OmniFisheyeCameraModel::ImageToWorld(const T* params, const T x,
+                                          const T y, T* u, T* v) {
+  const T xc = params[0];
+  const T yc = params[1];
+  const T c = params[2];
+  const T d = params[3];
+  const T e = params[4];
+  const T* pols = &params[15];
+
+  T invdet, xp, yp, r, r_i, zp;
+
+  invdet = T(1) / (c - d * e);
+  xp = invdet * (      (x-xc) - d*(y-yc) );
+  yp = invdet * ( -e * (x-xc) + c*(y-yc) );
+  r  = ceres::sqrt(xp*xp + yp*yp);
+  zp = pols[0];
+  r_i = T(1);
+
+  for (int i = 1; i <= 5; i++){
+    r_i *= r;
+    zp += r_i * pols[i];
+  }
+
+  // Lift points to normalized plane
+  *u = xp / zp;
+  *v = yp / zp;
+}
+
+// template <typename T>
+// void OmniFisheyeCameraModel::Distortion(const T* extra_params, const T u,
+//                                         const T v, T* du, T* dv) {
+//   const T k1 = extra_params[0];
+//   const T k2 = extra_params[1];
+//   const T k3 = extra_params[2];
+//   const T k4 = extra_params[3];
+
+//   const T r = ceres::sqrt(u * u + v * v);
+
+//   if (r > T(std::numeric_limits<double>::epsilon())) {
+//     const T theta = ceres::atan(r);
+//     const T theta2 = theta * theta;
+//     const T theta4 = theta2 * theta2;
+//     const T theta6 = theta4 * theta2;
+//     const T theta8 = theta4 * theta4;
+//     const T thetad =
+//         theta * (T(1) + k1 * theta2 + k2 * theta4 + k3 * theta6 + k4 * theta8);
+//     *du = u * thetad / r - u;
+//     *dv = v * thetad / r - v;
+//   } else {
+//     *du = T(0);
+//     *dv = T(0);
+//   }
+// }
+
+// template <typename T>
+// void OmniFisheyeCameraModel::Undistroction(const T* extra_params, const T u,
+//                                            const T v, T* du, T* dv) {
+//   const T k1 = extra_params[0];
+//   const T k2 = extra_params[1];
+//   const T k3 = extra_params[2];
+//   const T k4 = extra_params[3];
+
+//   const T r = ceres::sqrt(u * u + v * v);
+
+//   if (r > T(std::numeric_limits<double>::epsilon())) {
+//     const T theta = ceres::atan(r);
+//     const T theta2 = theta * theta;
+//     const T theta4 = theta2 * theta2;
+//     const T theta6 = theta4 * theta2;
+//     const T theta8 = theta4 * theta4;
+//     const T thetad =
+//         theta * (T(1) + k1 * theta2 + k2 * theta4 + k3 * theta6 + k4 * theta8);
+//     *du = u * thetad / r + u;
+//     *dv = v * thetad / r + v;
+//   } else {
+//     *du = T(0);
+//     *dv = T(0);
+//   }
+// }
 
 ////////////////////////////////////////////////////////////////////////////////
 // FullOpenCVCameraModel

@@ -10,6 +10,8 @@ import numpy as np
 import sqlite3
 from scripts.python.database import *
 
+CAM_DISTORTION_LIST = ['SFW','SLW','SRCW','SRW']   # Dict order
+
 def readCamIntrParams(cameraIntr_path):
     camIntr = {}
     # print("hello")
@@ -33,7 +35,8 @@ def camTodatabase(database_path, cameraIntr_path):
                     'RADIAL_FISHEYE': 7,
                     'OPENCV_FISHEYE': 8,
                     'FOV': 9,
-                    'THIN_PRISM_FISHEYE': 10}
+                    'THIN_PRISM_FISHEYE': 10,
+                    'OMNI_FISHEYE': 11}
 
     # parser = argparse.ArgumentParser()
     # parser.add_argument("--database_path", default="database.db")
@@ -56,7 +59,12 @@ def camTodatabase(database_path, cameraIntr_path):
     cam_info_pairs = db.get_imageCamerasId()
 
     for camera_id in cam_info_pairs:
-        model, params = 0, np.array(camIntr[cam_info_pairs[camera_id]])
+        cam = cam_info_pairs[camera_id]
+        if cam in CAM_DISTORTION_LIST:
+            model = 11
+        else:
+            model = 0
+        params = np.array(camIntr[cam])
         db.update_camera(camera_id, model, params, prior_focal_length=True)
 
     db.commit()
