@@ -81,7 +81,7 @@ void IterativeLocalRefinement(const IncrementalMapperOptions& options,
               << report.num_completed_observations << std::endl;
     std::cout << "  => Filtered observations: "
               << report.num_filtered_observations << std::endl;
-    const double changed =
+    const double changed = 
         report.num_adjusted_observations == 0
             ? 0
             : (report.num_merged_observations +
@@ -554,6 +554,7 @@ void IncrementalMapperController::Reconstruct(
             IterativeGlobalRefinement(*options_, &mapper);
             ba_prev_num_points = reconstruction.NumPoints3D();
             ba_prev_num_reg_images = reconstruction.NumRegImages();
+            (*log_file_ptr_) << "ba_prev_num_reg_images: ," << ba_prev_num_reg_images << "ba_prev_num_points: " << ba_prev_num_points << std::endl;
           }
 
           if (options_->extract_colors) {
