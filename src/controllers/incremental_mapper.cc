@@ -542,7 +542,7 @@ void IncrementalMapperController::Reconstruct(
           (*log_file_ptr_) << "  => reg_next_success " << std::endl;
           TriangulateImage(*options_, next_image, &mapper);
           IterativeLocalRefinement(*options_, next_image_id, &mapper);
-
+          (*log_file_ptr_) << "NumRegImages(): ," << reconstruction.NumRegImages() << "NumPoints3D(): " << reconstruction.NumPoints3D() << std::endl;
           if (reconstruction.NumRegImages() >=
                   options_->ba_global_images_ratio * ba_prev_num_reg_images ||
               reconstruction.NumRegImages() >=
@@ -554,7 +554,6 @@ void IncrementalMapperController::Reconstruct(
             IterativeGlobalRefinement(*options_, &mapper);
             ba_prev_num_points = reconstruction.NumPoints3D();
             ba_prev_num_reg_images = reconstruction.NumRegImages();
-            (*log_file_ptr_) << "ba_prev_num_reg_images: ," << ba_prev_num_reg_images << "ba_prev_num_points: " << ba_prev_num_points << std::endl;
           }
 
           if (options_->extract_colors) {
