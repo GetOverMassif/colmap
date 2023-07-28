@@ -629,7 +629,7 @@ size_t Reconstruction::FilterPoints3DInImages(
   }
   return FilterPoints3D(max_reproj_error, min_tri_angle, point3D_ids);
 }
-
+// TODO：DEBUG
 size_t Reconstruction::FilterAllPoints3D(const double max_reproj_error,
                                          const double min_tri_angle) {
   // Important: First filter observations and points with large reprojection
@@ -639,8 +639,10 @@ size_t Reconstruction::FilterAllPoints3D(const double max_reproj_error,
   size_t num_filtered = 0;
   num_filtered +=
       FilterPoints3DWithLargeReprojectionError(max_reproj_error, point3D_ids);
+  size_t num_filtered_1 = num_filtered;
   num_filtered +=
       FilterPoints3DWithSmallTriangulationAngle(min_tri_angle, point3D_ids);
+  std::cout << "Filtered " << num_filtered_1 << ", " << num_filtered - num_filtered_1 << " points3D" << std::endl;
   return num_filtered;
 }
 
@@ -1486,6 +1488,8 @@ size_t Reconstruction::FilterPoints3DWithLargeReprojectionError(
 
     if (point3D.Track().Length() < 2) {
       num_filtered += point3D.Track().Length();
+      // TODO:DEBUG
+      std::cout << "Filter because point3D.Track().Length() < 2" << std::endl;
       DeletePoint3D(point3D_id);
       continue;
     }
@@ -1500,6 +1504,8 @@ size_t Reconstruction::FilterPoints3DWithLargeReprojectionError(
       const Point2D& point2D = image.Point2D(track_el.point2D_idx);
       const double squared_reproj_error = CalculateSquaredReprojectionError(
           point2D.XY(), point3D.XYZ(), image.Qvec(), image.Tvec(), camera);
+      // TODO: DEBUG
+    //   std::cout << "squared_reproj_error = " << squared_reproj_error << ", max_squared_reproj_error = " << max_squared_reproj_error << std::endl;
       if (squared_reproj_error > max_squared_reproj_error) {
         track_els_to_delete.push_back(track_el);
       } else {

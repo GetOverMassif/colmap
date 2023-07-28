@@ -38,7 +38,6 @@
 
 namespace colmap {
 
-// TODO: 待看mapper参数
 struct IncrementalMapperOptions {
  public:
   // The minimum number of matches for inlier matches to be considered.

@@ -1017,7 +1017,7 @@ std::string OmniFisheyeCameraModel::InitializeParamsInfo() {
 }
 
 std::vector<size_t> OmniFisheyeCameraModel::InitializeFocalLengthIdxs() {
-  return {5};
+  return {5, 6};
 }
 
 std::vector<size_t> OmniFisheyeCameraModel::InitializePrincipalPointIdxs() {
@@ -1025,7 +1025,7 @@ std::vector<size_t> OmniFisheyeCameraModel::InitializePrincipalPointIdxs() {
 }
 
 std::vector<size_t> OmniFisheyeCameraModel::InitializeExtraParamsIdxs() {
-  return {2,3,4,6,7,8,9,10,11,12,13,14,15,16,17,18,19};
+  return {};
 }
 
 // 待看是否需要修改
@@ -1056,13 +1056,13 @@ void OmniFisheyeCameraModel::WorldToImage(const T* params, const T u,
   }
 
   T invnorm, theta, t, t_i, rho, xd, yd;
-  theta = ceres::atan2(T(1), norm);
+  theta = ceres::atan2(-T(1), norm);
   t = theta;
   t_i = T(1);
   invnorm = T(1) / norm;
   rho = inv_pols[0];
   
-  for (int i = 1; i <= 10; i++) {
+  for (int i = 1; i < 10; i++) {
     t_i *= t;
     rho += t_i * inv_pols[i];
   }
@@ -1094,10 +1094,11 @@ void OmniFisheyeCameraModel::ImageToWorld(const T* params, const T x,
   zp = pols[0];
   r_i = T(1);
 
-  for (int i = 1; i <= 5; i++){
+  for (int i = 1; i < 5; i++){
     r_i *= r;
     zp += r_i * pols[i];
   }
+  zp = -zp;
 
   // Lift points to normalized plane
   *u = xp / zp;

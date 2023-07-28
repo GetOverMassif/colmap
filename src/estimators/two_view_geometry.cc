@@ -283,6 +283,10 @@ void TwoViewGeometry::EstimateCalibrated(
       options.ransac_options);
   const auto H_report = H_ransac.Estimate(matched_points1, matched_points2);
   H = H_report.model;
+//   std::cout << "options.min_num_inliers = " << options.min_num_inliers << std::endl;
+//   std::cout << "E_report.support.num_inliers = " << E_report.support.num_inliers << std::endl;
+//   std::cout << "F_report.support.num_inliers = " << F_report.support.num_inliers << std::endl;
+//   std::cout << "H_report.support.num_inliers = " << H_report.support.num_inliers << std::endl;
 
   if ((!E_report.success && !F_report.success && !H_report.success) ||
       (E_report.support.num_inliers < options.min_num_inliers &&

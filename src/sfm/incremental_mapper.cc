@@ -303,6 +303,9 @@ bool IncrementalMapper::RegisterInitialImagePair(const Options& options,
   image2.Qvec() = prev_init_two_view_geometry_.qvec;
   image2.Tvec() = prev_init_two_view_geometry_.tvec;
 
+  (*log_file_ptr_) << "image2.Qvec(): " << image2.Qvec() << std::endl;
+  (*log_file_ptr_) << "image2.Tvec(): " << image2.Tvec() << std::endl;
+
   const Eigen::Matrix3x4d proj_matrix1 = image1.ProjectionMatrix();
   const Eigen::Matrix3x4d proj_matrix2 = image2.ProjectionMatrix();
   const Eigen::Vector3d proj_center1 = image1.ProjectionCenter();
@@ -341,6 +344,16 @@ bool IncrementalMapper::RegisterInitialImagePair(const Options& options,
         TriangulatePoint(proj_matrix1, proj_matrix2, point1_N, point2_N);
     const double tri_angle =
         CalculateTriangulationAngle(proj_center1, proj_center2, xyz);
+
+    // TODO：DEBUG
+    // (*log_file_ptr_) << "point1: " << image1.Point2D(corr.point2D_idx1).XY() << std::endl;
+    // (*log_file_ptr_) << "point2: " << image2.Point2D(corr.point2D_idx2).XY() << std::endl;
+    // (*log_file_ptr_) << "point1_N = " << point1_N << ", ";
+    // (*log_file_ptr_) << "point2_N = " << point2_N << ", ";
+    // (*log_file_ptr_) << "xyz = " << xyz << ", ";
+    // (*log_file_ptr_) << "min_tri_angle_rad = " << min_tri_angle_rad << ", ";
+    // (*log_file_ptr_) << "tri_angle = " << tri_angle << ", " \
+        << HasPointPositiveDepth(proj_matrix1, xyz) << HasPointPositiveDepth(proj_matrix2, xyz) << std::endl;
     if (tri_angle >= min_tri_angle_rad &&
         HasPointPositiveDepth(proj_matrix1, xyz) &&
         HasPointPositiveDepth(proj_matrix2, xyz)) {
@@ -353,6 +366,7 @@ bool IncrementalMapper::RegisterInitialImagePair(const Options& options,
   return true;
 }
 
+// TODO: 看看注册过程中哪里出错、失败了
 bool IncrementalMapper::RegisterNextImage(const Options& options,
                                           const image_t image_id) {
   CHECK_NOTNULL(reconstruction_);
@@ -366,7 +380,9 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
   CHECK(!image.IsRegistered()) << "Image cannot be registered multiple times";
 
   num_reg_trials_[image_id] += 1;
-
+  
+  std::cout << "image.NumVisiblePoints3D(): " << image.NumVisiblePoints3D() \
+    << ", abs_pose_min_num_inliers:" << static_cast<size_t>(options.abs_pose_min_num_inliers) << std::endl;
   // Check if enough 2D-3D correspondences.
   if (image.NumVisiblePoints3D() <
       static_cast<size_t>(options.abs_pose_min_num_inliers)) {
@@ -387,6 +403,8 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
   std::unordered_set<point3D_t> corr_point3D_ids;
   for (point2D_t point2D_idx = 0; point2D_idx < image.NumPoints2D();
        ++point2D_idx) {
+    
+    // std::cout << "point2D_idx: " << point2D_idx << ": " << std::endl;
     const Point2D& point2D = image.Point2D(point2D_idx);
 
     corr_point3D_ids.clear();
@@ -406,7 +424,7 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
       if (corr_point3D_ids.count(corr_point2D.Point3DId()) > 0) {
         continue;
       }
-
+      
       const Camera& corr_camera =
           reconstruction_->Camera(corr_image.CameraId());
 
@@ -414,6 +432,7 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
       if (corr_camera.HasBogusParams(options.min_focal_length_ratio,
                                      options.max_focal_length_ratio,
                                      options.max_extra_param)) {
+        std::cout << "  => continue because HasBogusParams" << std::endl;
         continue;
       }
 
@@ -426,7 +445,8 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
       tri_points3D.push_back(point3D.XYZ());
     }
   }
-
+  (*log_file_ptr_) << "tri_points2D.size(): " << tri_points2D.size() \
+      << ", abs_pose_min_num_inliers:" << static_cast<size_t>(options.abs_pose_min_num_inliers) << std::endl;
   // The size of `next_image.num_tri_obs` and `tri_corrs_point2D_idxs.size()`
   // can only differ, when there are images with bogus camera parameters, and
   // hence we skip some of the 2D-3D correspondences.
@@ -500,10 +520,13 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
   if (!EstimateAbsolutePose(abs_pose_options, tri_points2D, tri_points3D,
                             &image.Qvec(), &image.Tvec(), &camera, &num_inliers,
                             &inlier_mask)) {
+    (*log_file_ptr_) << "EstimateAbsolutePose fails" << std::endl;
     return false;
   }
 
   if (num_inliers < static_cast<size_t>(options.abs_pose_min_num_inliers)) {
+    (*log_file_ptr_) << "num_inliers = " << num_inliers \
+        << ", abs_pose_min_num_inliers = " << static_cast<size_t>(options.abs_pose_min_num_inliers) << std::endl;
     return false;
   }
 
@@ -514,6 +537,7 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
   if (!RefineAbsolutePose(abs_pose_refinement_options, inlier_mask,
                           tri_points2D, tri_points3D, &image.Qvec(),
                           &image.Tvec(), &camera)) {
+    (*log_file_ptr_) << "EstimateAbsolutePose fails" << std::endl;
     return false;
   }
 

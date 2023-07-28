@@ -34,6 +34,7 @@
 
 #include <limits>
 #include <vector>
+#include <iostream>
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>

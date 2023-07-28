@@ -899,7 +899,6 @@ void SiftFeatureMatcher::Match(
         data.image_id1 = image_pair.first;
         data.image_id2 = image_pair.second;
 
-        // TODO：可以在这里加一个判断，如果已经存在 two_view_geometry，就不用再计算了
         if (exists_inlier_matches) {
             // std::cout << cache_->GetImage(image_pair.first).Name() << "," \
             //           << cache_->GetImage(image_pair.second).Name() << " " \
@@ -1124,7 +1123,6 @@ void SequentialFeatureMatcher::Run() {
   GetTimer().PrintMinutes();
 }
 
-// TODO: 在这里获取了各个相机的序列ID和同一时刻的图像对
 void SequentialFeatureMatcher::GetMultiCamOrderedImageIds(
     std::vector<std::vector<image_t>>& multi_cam_ordered_image_ids, 
     std::vector<std::pair<image_t, image_t>>& same_snapshot_image_pairs){

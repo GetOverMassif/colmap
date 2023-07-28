@@ -146,9 +146,12 @@ void WriteSnapshot(const Reconstruction& reconstruction,
       std::chrono::duration_cast<std::chrono::milliseconds>(
           std::chrono::high_resolution_clock::now().time_since_epoch())
           .count();
+  std::cout << "  => timestamp = " << timestamp << std::endl;
   // Write reconstruction to unique path with current timestamp.
+//   const std::string path =
+//       JoinPaths(snapshot_path, StringPrintf("%010d", timestamp));
   const std::string path =
-      JoinPaths(snapshot_path, StringPrintf("%010d", timestamp));
+      JoinPaths(snapshot_path, std::to_string(timestamp));
   CreateDirIfNotExists(path);
   std::cout << "  => Writing to " << path << std::endl;
   reconstruction.Write(path);
@@ -446,6 +449,7 @@ void IncrementalMapperController::Reconstruct(
                                  image_id1, image_id2));
       const bool reg_init_success = mapper.RegisterInitialImagePair(
           init_mapper_options, image_id1, image_id2);
+      std::cout << "reg_init_success = " << reg_init_success << std::endl;
       if (!reg_init_success) {
         (*log_file_ptr_) << "  => Initialization failed" << std::endl;
         std::cout << "  => Initialization failed - possible solutions:"
@@ -458,14 +462,21 @@ void IncrementalMapperController::Reconstruct(
         reconstruction_manager_->Delete(reconstruction_idx);
         break;
       }
-
+      std::cout << "NumRegImages(): " << reconstruction.NumRegImages() << ", NumPoints3D(): " << reconstruction.NumPoints3D() << std::endl;
+      std::cout << "=> AdjustGlobalBundle" << std::endl;
       AdjustGlobalBundle(*options_, &mapper);
+      std::cout << "NumRegImages(): " << reconstruction.NumRegImages() << ", NumPoints3D(): " << reconstruction.NumPoints3D() << std::endl;
+      std::cout << "=> FilterPoints" << std::endl;
       FilterPoints(*options_, &mapper);
+      std::cout << "NumRegImages(): " << reconstruction.NumRegImages() << ", NumPoints3D(): " << reconstruction.NumPoints3D() << std::endl;
+      std::cout << "=> FilterImages" << std::endl;
       FilterImages(*options_, &mapper);
+      std::cout << "NumRegImages(): " << reconstruction.NumRegImages() << ", NumPoints3D(): " << reconstruction.NumPoints3D() << std::endl;
 
       // Initial image pair failed to register.
       if (reconstruction.NumRegImages() == 0 ||
           reconstruction.NumPoints3D() == 0) {
+        std::cout << "=> Initial image pair failed to register" << std::endl;
         mapper.EndReconstruction(kDiscardReconstruction);
         reconstruction_manager_->Delete(reconstruction_idx);
         // If both initial images are manually specified, there is no need for
@@ -542,7 +553,7 @@ void IncrementalMapperController::Reconstruct(
           (*log_file_ptr_) << "  => reg_next_success " << std::endl;
           TriangulateImage(*options_, next_image, &mapper);
           IterativeLocalRefinement(*options_, next_image_id, &mapper);
-          (*log_file_ptr_) << "NumRegImages(): ," << reconstruction.NumRegImages() << "NumPoints3D(): " << reconstruction.NumPoints3D() << std::endl;
+          (*log_file_ptr_) << "NumRegImages(): " << reconstruction.NumRegImages() << ", NumPoints3D(): " << reconstruction.NumPoints3D() << std::endl;
           if (reconstruction.NumRegImages() >=
                   options_->ba_global_images_ratio * ba_prev_num_reg_images ||
               reconstruction.NumRegImages() >=

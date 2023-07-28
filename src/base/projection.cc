@@ -115,7 +115,7 @@ double CalculateSquaredReprojectionError(const Eigen::Vector2d& point2D,
                                          const Camera& camera) {
   const Eigen::Vector3d proj_point3D =
       QuaternionRotatePoint(qvec, point3D) + tvec;
-
+//   std::cout << "proj_point3D = " <<  proj_point3D << std::endl;
   // Check that point is infront of camera.
   if (proj_point3D.z() < std::numeric_limits<double>::epsilon()) {
     return std::numeric_limits<double>::max();
@@ -123,7 +123,8 @@ double CalculateSquaredReprojectionError(const Eigen::Vector2d& point2D,
 
   const Eigen::Vector2d proj_point2D =
       camera.WorldToImage(proj_point3D.hnormalized());
-
+//   std::cout << "proj_point2D = " <<  proj_point2D << std::endl;
+//   std::cout << "point2D = " <<  point2D << std::endl;
   return (proj_point2D - point2D).squaredNorm();
 }
 
