@@ -1070,8 +1070,9 @@ void OmniFisheyeCameraModel::WorldToImage(const T* params, const T u,
   xd = u * rho * invnorm;
   yd = v * rho * invnorm;
 
-  *x = xd*c + yd*d + xc;
-  *y = xd*e + yd   + yc;
+  
+  *x = xd + yd*e + xc;
+  *y = xd*d + yd*c + yc;
   return;
 }
 
@@ -1088,8 +1089,8 @@ void OmniFisheyeCameraModel::ImageToWorld(const T* params, const T x,
   T invdet, xp, yp, r, r_i, zp;
 
   invdet = T(1) / (c - d * e);
-  xp = invdet * (      (x-xc) - d*(y-yc) );
-  yp = invdet * ( -e * (x-xc) + c*(y-yc) );
+  xp = invdet * (  c *  (x-xc) - e*(y-yc) );
+  yp = invdet * ( -d * (x-xc) + (y-yc) );
   r  = ceres::sqrt(xp*xp + yp*yp);
   zp = pols[0];
   r_i = T(1);
