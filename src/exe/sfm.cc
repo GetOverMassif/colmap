@@ -31,6 +31,8 @@
 
 #include <iostream>
 #include <fstream>
+#include <streambuf>
+#include <filesystem>
 
 #include "exe/sfm.h"
 
@@ -186,106 +188,102 @@ int RunColorExtractor(int argc, char** argv) {
 }
 
 int RunMapper(int argc, char** argv) {
-  std::string input_path;
-  std::string output_path;
-  std::string image_list_path;
+    std::string input_path;
+    std::string output_path;
+    std::string image_list_path;
 
-  OptionManager options;
-  options.AddDatabaseOptions();
-  options.AddImageOptions();
-  options.AddDefaultOption("input_path", &input_path);
-  options.AddRequiredOption("output_path", &output_path);
-  options.AddDefaultOption("image_list_path", &image_list_path);
-  options.AddMapperOptions();
-  options.Parse(argc, argv);
+    OptionManager options;
+    options.AddDatabaseOptions();
+    options.AddImageOptions();
+    options.AddDefaultOption("input_path", &input_path);
+    options.AddRequiredOption("output_path", &output_path);
+    options.AddDefaultOption("image_list_path", &image_list_path);
+    options.AddMapperOptions();
+    options.Parse(argc, argv);
 
-  if (!ExistsDir(output_path)) {
-    std::cerr << "ERROR: `output_path` is not a directory." << std::endl;
-    return EXIT_FAILURE;
-  }
-
-    // 写入log文件
-    std::cout << "output_path = " << output_path << std::endl;
-    std::string mapper_log_file = output_path + "/mapper.log";
-    std::ofstream* filePtr = new std::ofstream();
-    filePtr->open(mapper_log_file, std::ios::out);
-
-    // 检查文件是否成功打开
-    if (filePtr->is_open()) {
-        // 写入数据到文件
-        (*filePtr) << "Hello, World!" << std::endl;
-        (*filePtr) << "This is a text file." << std::endl;
-
-        std::cout << "File opened successfully." << std::endl;
-    } else {
-        std::cout << "Failed to open the file." << std::endl;
+    if (!ExistsDir(output_path)) {
+        std::cerr << "ERROR: `output_path` is not a directory." << std::endl;
         return EXIT_FAILURE;
     }
 
-  if (!image_list_path.empty()) {
-    const auto image_names = ReadTextFileLines(image_list_path);
-    options.mapper->image_names =
-        std::unordered_set<std::string>(image_names.begin(), image_names.end());
-  }
-
-  ReconstructionManager reconstruction_manager;
-  if (input_path != "") {
-    if (!ExistsDir(input_path)) {
-      std::cerr << "ERROR: `input_path` is not a directory." << std::endl;
-      return EXIT_FAILURE;
+    // 设置全局log文件
+    std::string logFileName;
+    if (options.mapper->log_file_path == ""){
+        logFileName = output_path + "/mapper.log";
     }
-    reconstruction_manager.Read(input_path);
-  }
+    else {
+        logFileName = options.mapper->log_file_path;
+    }
 
-  IncrementalMapperController mapper(options.mapper.get(), *options.image_path,
-                                     *options.database_path,
-                                     &reconstruction_manager);
+    std::ofstream logFile(logFileName);
+    std::streambuf* originalCoutStreamBuf = std::cout.rdbuf();
 
-  mapper.SetLogFilePtr(filePtr);
-  // In case a new reconstruction is started, write results of individual sub-
-  // models to as their reconstruction finishes instead of writing all results
-  // after all reconstructions finished.
-  // 一旦一个新的重建开始了，当它们的重建结束时即写出一个独立子模型的结果，而不是在所有重建结束时去写出所有结果。
-  size_t prev_num_reconstructions = 0;
+    std::cout << "Logging into " << logFileName << std::endl;
+    std::cout.rdbuf(logFile.rdbuf());
 
-  // 如果输入路径为空
-  if (input_path == "") {
-    mapper.AddCallback(
-        IncrementalMapperController::LAST_IMAGE_REG_CALLBACK, [&]() {
-          // If the number of reconstructions has not changed, the last model
-          // was discarded for some reason.
-          if (reconstruction_manager.Size() > prev_num_reconstructions)
-          {
-            const std::string reconstruction_path = JoinPaths(output_path, std::to_string(prev_num_reconstructions));
-            const auto& reconstruction = reconstruction_manager.Get(prev_num_reconstructions);
-            CreateDirIfNotExists(reconstruction_path);
-            reconstruction.Write(reconstruction_path);
-            options.Write(JoinPaths(reconstruction_path, "project.ini"));
-            prev_num_reconstructions = reconstruction_manager.Size();
-          }
-        });
-  }
+    if (!image_list_path.empty()) {
+        const auto image_names = ReadTextFileLines(image_list_path);
+        options.mapper->image_names =
+            std::unordered_set<std::string>(image_names.begin(), image_names.end());
+    }
 
-  // 启动 mapper
-  mapper.Start();
-  mapper.Wait();
+    ReconstructionManager reconstruction_manager;
+    if (input_path != "") {
+        if (!ExistsDir(input_path)) {
+            std::cerr << "ERROR: `input_path` is not a directory." << std::endl;
+            return EXIT_FAILURE;
+        }
+        reconstruction_manager.Read(input_path);
+    }
 
-  if (reconstruction_manager.Size() == 0) {
-    std::cerr << "ERROR: failed to create sparse model" << std::endl;
-    return EXIT_FAILURE;
-  }
+    IncrementalMapperController mapper(options.mapper.get(), *options.image_path,
+                                        *options.database_path,
+                                        &reconstruction_manager);
 
-  // In case the reconstruction is continued from an existing reconstruction, do
-  // not create sub-folders but directly write the results.
-  // 如果是在现有的重建基础上继续重建，则不要创建子文件夹，而是直接写入结果。
-  if (input_path != "" && reconstruction_manager.Size() > 0) {
-    reconstruction_manager.Get(0).Write(output_path);
-  }
+    // In case a new reconstruction is started, write results of individual sub-
+    // models to as their reconstruction finishes instead of writing all results
+    // after all reconstructions finished.
+    // 一旦一个新的重建开始了，当它们的重建结束时即写出一个独立子模型的结果，而不是在所有重建结束时去写出所有结果。
+    size_t prev_num_reconstructions = 0;
 
-  // 关闭文件
-  filePtr->close();
+    // 如果输入路径为空
+    if (input_path == "") {
+        mapper.AddCallback(
+            IncrementalMapperController::LAST_IMAGE_REG_CALLBACK, [&]() {
+            // If the number of reconstructions has not changed, the last model
+            // was discarded for some reason.
+            if (reconstruction_manager.Size() > prev_num_reconstructions)
+            {
+                const std::string reconstruction_path = JoinPaths(output_path, std::to_string(prev_num_reconstructions));
+                const auto& reconstruction = reconstruction_manager.Get(prev_num_reconstructions);
+                CreateDirIfNotExists(reconstruction_path);
+                reconstruction.Write(reconstruction_path);
+                options.Write(JoinPaths(reconstruction_path, "project.ini"));
+                prev_num_reconstructions = reconstruction_manager.Size();
+            }
+            });
+    }
 
-  return EXIT_SUCCESS;
+    // 启动 mapper
+    mapper.Start();
+    mapper.Wait();
+
+    if (reconstruction_manager.Size() == 0) {
+        std::cerr << "ERROR: failed to create sparse model" << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    // In case the reconstruction is continued from an existing reconstruction, do
+    // not create sub-folders but directly write the results.
+    // 如果是在现有的重建基础上继续重建，则不要创建子文件夹，而是直接写入结果。
+    if (input_path != "" && reconstruction_manager.Size() > 0) {
+        reconstruction_manager.Get(0).Write(output_path);
+    }
+
+    std::cout.rdbuf(originalCoutStreamBuf);
+    std::cout << "Finished mapper successfully." << std::endl;
+
+    return EXIT_SUCCESS;
 }
 
 int RunHierarchicalMapper(int argc, char** argv) {

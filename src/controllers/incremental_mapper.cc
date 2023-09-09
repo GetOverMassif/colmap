@@ -376,8 +376,6 @@ void IncrementalMapperController::Reconstruct(
 
   IncrementalMapper mapper(&database_cache_);
 
-  mapper.SetLogFilePtr(log_file_ptr_);
-
   // Is there a sub-model before we start the reconstruction? I.e. the user
   // has imported an existing reconstruction.
   // 在我们开始重建之前是否已经有一个子模型？例如用户导入了一个已有的重建结果。
@@ -409,88 +407,85 @@ void IncrementalMapperController::Reconstruct(
     ////////////////////////////////////////////////////////////////////////////
     // TODO: 待看，如何 register initial pair
     if (reconstruction.NumRegImages() == 0) {
-      image_t image_id1 = static_cast<image_t>(options_->init_image_id1);
-      image_t image_id2 = static_cast<image_t>(options_->init_image_id2);
+        image_t image_id1 = static_cast<image_t>(options_->init_image_id1);
+        image_t image_id2 = static_cast<image_t>(options_->init_image_id2);
 
-      // Try to find good initial pair.
-      if (options_->init_image_id1 == -1 || options_->init_image_id2 == -1) {
-        (*log_file_ptr_) << "Finding good initial image pair" << std::endl;
-        PrintHeading1("Finding good initial image pair");
-        const bool find_init_success = mapper.FindInitialImagePair(
-            init_mapper_options, &image_id1, &image_id2);
-        if (!find_init_success) {
-          (*log_file_ptr_) << "  => No good initial image pair found." << std::endl;
-          std::cout << "  => No good initial image pair found." << std::endl;
-          mapper.EndReconstruction(kDiscardReconstruction);
-          reconstruction_manager_->Delete(reconstruction_idx);
-          break;
-        }
-      } else {
-        if (!reconstruction.ExistsImage(image_id1) ||
-            !reconstruction.ExistsImage(image_id2)) {
-          std::cout << StringPrintf(
-                           "  => Initial image pair #%d and #%d do not exist.",
-                           image_id1, image_id2)
-                    << std::endl;
-          mapper.EndReconstruction(kDiscardReconstruction);
-          reconstruction_manager_->Delete(reconstruction_idx);
-          return;
-        }
-      }
-
-      std::string image_name1 = reconstruction.Image(image_id1).Name();
-      std::string image_name2 = reconstruction.Image(image_id2).Name();
-      
-      (*log_file_ptr_) << StringPrintf("Initializing with image pair #%d and #%d",
-                                 image_id1, image_id2) << ", "
-                       << image_name1 << ", " << image_name2 << std::endl;
-
-      PrintHeading1(StringPrintf("Initializing with image pair #%d and #%d",
-                                 image_id1, image_id2));
-      const bool reg_init_success = mapper.RegisterInitialImagePair(
-          init_mapper_options, image_id1, image_id2);
-      std::cout << "reg_init_success = " << reg_init_success << std::endl;
-      if (!reg_init_success) {
-        (*log_file_ptr_) << "  => Initialization failed" << std::endl;
-        std::cout << "  => Initialization failed - possible solutions:"
-                  << std::endl
-                  << "     - try to relax the initialization constraints"
-                  << std::endl
-                  << "     - manually select an initial image pair"
-                  << std::endl;
-        mapper.EndReconstruction(kDiscardReconstruction);
-        reconstruction_manager_->Delete(reconstruction_idx);
-        break;
-      }
-      std::cout << "NumRegImages(): " << reconstruction.NumRegImages() << ", NumPoints3D(): " << reconstruction.NumPoints3D() << std::endl;
-      std::cout << "=> AdjustGlobalBundle" << std::endl;
-      AdjustGlobalBundle(*options_, &mapper);
-      std::cout << "NumRegImages(): " << reconstruction.NumRegImages() << ", NumPoints3D(): " << reconstruction.NumPoints3D() << std::endl;
-      std::cout << "=> FilterPoints" << std::endl;
-      FilterPoints(*options_, &mapper);
-      std::cout << "NumRegImages(): " << reconstruction.NumRegImages() << ", NumPoints3D(): " << reconstruction.NumPoints3D() << std::endl;
-      std::cout << "=> FilterImages" << std::endl;
-      FilterImages(*options_, &mapper);
-      std::cout << "NumRegImages(): " << reconstruction.NumRegImages() << ", NumPoints3D(): " << reconstruction.NumPoints3D() << std::endl;
-
-      // Initial image pair failed to register.
-      if (reconstruction.NumRegImages() == 0 ||
-          reconstruction.NumPoints3D() == 0) {
-        std::cout << "=> Initial image pair failed to register" << std::endl;
-        mapper.EndReconstruction(kDiscardReconstruction);
-        reconstruction_manager_->Delete(reconstruction_idx);
-        // If both initial images are manually specified, there is no need for
-        // further initialization trials.
-        if (options_->init_image_id1 != -1 && options_->init_image_id2 != -1) {
-          break;
+        // Try to find good initial pair.
+        if (options_->init_image_id1 == -1 || options_->init_image_id2 == -1) {
+            PrintHeading1("Finding good initial image pair");
+            const bool find_init_success = mapper.FindInitialImagePair(
+                init_mapper_options, &image_id1, &image_id2);
+            if (!find_init_success) {
+            std::cout << "  => No good initial image pair found." << std::endl;
+            mapper.EndReconstruction(kDiscardReconstruction);
+            reconstruction_manager_->Delete(reconstruction_idx);
+            break;
+            }
         } else {
-          continue;
+            if (!reconstruction.ExistsImage(image_id1) ||
+                !reconstruction.ExistsImage(image_id2)) {
+            std::cout << StringPrintf(
+                            "  => Initial image pair #%d and #%d do not exist.",
+                            image_id1, image_id2)
+                        << std::endl;
+            mapper.EndReconstruction(kDiscardReconstruction);
+            reconstruction_manager_->Delete(reconstruction_idx);
+            return;
+            }
         }
-      }
 
-      if (options_->extract_colors) {
-        ExtractColors(image_path_, image_id1, &reconstruction);
-      }
+        std::string image_name1 = reconstruction.Image(image_id1).Name();
+        std::string image_name2 = reconstruction.Image(image_id2).Name();
+        
+        std::cout << StringPrintf("Initializing with image pair #%d and #%d",
+                                    image_id1, image_id2) << ", "
+                        << image_name1 << ", " << image_name2 << std::endl;
+
+        //   PrintHeading1(StringPrintf("Initializing with image pair #%d and #%d",
+        //                              image_id1, image_id2));
+        const bool reg_init_success = mapper.RegisterInitialImagePair(
+            init_mapper_options, image_id1, image_id2);
+        std::cout << "reg_init_success = " << reg_init_success << std::endl;
+        if (!reg_init_success) {
+            std::cout << "  => Initialization failed - possible solutions:"
+                    << std::endl
+                    << "     - try to relax the initialization constraints"
+                    << std::endl
+                    << "     - manually select an initial image pair"
+                    << std::endl;
+            mapper.EndReconstruction(kDiscardReconstruction);
+            reconstruction_manager_->Delete(reconstruction_idx);
+            break;
+        }
+        std::cout << "NumRegImages(): " << reconstruction.NumRegImages() << ", NumPoints3D(): " << reconstruction.NumPoints3D() << std::endl;
+        std::cout << "=> AdjustGlobalBundle" << std::endl;
+        AdjustGlobalBundle(*options_, &mapper);
+        std::cout << "NumRegImages(): " << reconstruction.NumRegImages() << ", NumPoints3D(): " << reconstruction.NumPoints3D() << std::endl;
+        std::cout << "=> FilterPoints" << std::endl;
+        FilterPoints(*options_, &mapper);
+        std::cout << "NumRegImages(): " << reconstruction.NumRegImages() << ", NumPoints3D(): " << reconstruction.NumPoints3D() << std::endl;
+        std::cout << "=> FilterImages" << std::endl;
+        FilterImages(*options_, &mapper);
+        std::cout << "NumRegImages(): " << reconstruction.NumRegImages() << ", NumPoints3D(): " << reconstruction.NumPoints3D() << std::endl;
+        
+        // Initial image pair failed to register.
+        if (reconstruction.NumRegImages() == 0 ||
+            reconstruction.NumPoints3D() == 0) {
+            std::cout << "=> Initial image pair failed to register" << std::endl;
+            mapper.EndReconstruction(kDiscardReconstruction);
+            reconstruction_manager_->Delete(reconstruction_idx);
+            // If both initial images are manually specified, there is no need for
+            // further initialization trials.
+            if (options_->init_image_id1 != -1 && options_->init_image_id2 != -1) {
+            break;
+            } else {
+            continue;
+            }
+        }
+
+        if (options_->extract_colors) {
+            ExtractColors(image_path_, image_id1, &reconstruction);
+        }
     }
 
     Callback(INITIAL_IMAGE_PAIR_REG_CALLBACK);
@@ -506,160 +501,158 @@ void IncrementalMapperController::Reconstruct(
     bool reg_next_success = true;
     bool prev_reg_next_success = true;
     while (reg_next_success) {
-      BlockIfPaused();
-      if (IsStopped()) {
-        break;
-      }
-
-      reg_next_success = false;
-
-      const std::vector<image_t> next_images =
-          mapper.FindNextImages(options_->Mapper());
-
-      if (next_images.empty()) {
-        break;
-      }
-
-      
-
-      (*log_file_ptr_) << "next_images.size() = " << next_images.size() << std::endl;
-      for (size_t i = 0; i < next_images.size(); ++i) {
-        (*log_file_ptr_) << "next_images[" << i << "] = " << reconstruction.Image(next_images[i]).Name() << std::endl;
-      }
-    
-      // TODO: 希望记录包含失败尝试记录的重建过程
-      for (size_t reg_trial = 0; reg_trial < next_images.size(); ++reg_trial) {
-        const image_t next_image_id = next_images[reg_trial];
-        const Image& next_image = reconstruction.Image(next_image_id);
-
-        (*log_file_ptr_) << "Registering image " << next_image.Name() << std::endl;
-        (*log_file_ptr_) << StringPrintf("  => Image sees %d / %d points",
-                                  next_image.NumVisiblePoints3D(),
-                                  next_image.NumObservations())  << std::endl;
-
-        PrintHeading1(StringPrintf("Registering image #%d (%d)", next_image_id,
-                                   reconstruction.NumRegImages() + 1));
-
-        std::cout << StringPrintf("  => Image sees %d / %d points",
-                                  next_image.NumVisiblePoints3D(),
-                                  next_image.NumObservations())
-                  << std::endl;
-
-        reg_next_success =
-            mapper.RegisterNextImage(options_->Mapper(), next_image_id);
-        
-
-        if (reg_next_success) {
-          (*log_file_ptr_) << "  => reg_next_success " << std::endl;
-          TriangulateImage(*options_, next_image, &mapper);
-          IterativeLocalRefinement(*options_, next_image_id, &mapper);
-          (*log_file_ptr_) << "NumRegImages(): " << reconstruction.NumRegImages() << ", NumPoints3D(): " << reconstruction.NumPoints3D() << std::endl;
-          if (reconstruction.NumRegImages() >=
-                  options_->ba_global_images_ratio * ba_prev_num_reg_images ||
-              reconstruction.NumRegImages() >=
-                  options_->ba_global_images_freq + ba_prev_num_reg_images ||
-              reconstruction.NumPoints3D() >=
-                  options_->ba_global_points_ratio * ba_prev_num_points ||
-              reconstruction.NumPoints3D() >=
-                  options_->ba_global_points_freq + ba_prev_num_points) {
-            IterativeGlobalRefinement(*options_, &mapper);
-            ba_prev_num_points = reconstruction.NumPoints3D();
-            ba_prev_num_reg_images = reconstruction.NumRegImages();
-          }
-
-          if (options_->extract_colors) {
-            ExtractColors(image_path_, next_image_id, &reconstruction);
-          }
-
-          if (options_->snapshot_images_freq > 0 &&
-              reconstruction.NumRegImages() >=
-                  options_->snapshot_images_freq +
-                      snapshot_prev_num_reg_images) {
-            snapshot_prev_num_reg_images = reconstruction.NumRegImages();
-            WriteSnapshot(reconstruction, options_->snapshot_path);
-          }
-
-          Callback(NEXT_IMAGE_REG_CALLBACK);
-          // 每次注册成功后，都会先退出这个循环再尝试下一个图像
-          break;
-        } else {
-          (*log_file_ptr_) << "  => Could not register, trying another image." << std::endl;
-          std::cout << "  => Could not register, trying another image."
-                    << std::endl;
-
-          // If initial pair fails to continue for some time,
-          // abort and try different initial pair.
-          // 如果初始对持续一段时间未能继续，就放弃并尝试不同的初始对。
-          const size_t kMinNumInitialRegTrials = 30;
-          if (reg_trial >= kMinNumInitialRegTrials &&
-              reconstruction.NumRegImages() <
-                  static_cast<size_t>(options_->min_model_size)) {
+        BlockIfPaused();
+        if (IsStopped()) {
             break;
-          }
+        }
+
+        reg_next_success = false;
+
+        const std::vector<image_t> next_images =
+            mapper.FindNextImages(options_->Mapper());
+
+        if (next_images.empty()) {
+            break;
         }
         
-      }
+        // new add
+        std::cout << "next_images.size() = " << next_images.size() << std::endl;
+        for (size_t i = 0; i < next_images.size(); ++i) {
+            // new add
+            std::cout << "next_images[" << i << "] = " << reconstruction.Image(next_images[i]).Name() << std::endl;
+        }
+        
+        // TODO: 希望记录包含失败尝试记录的重建过程
+        for (size_t reg_trial = 0; reg_trial < next_images.size(); ++reg_trial) {
+            const image_t next_image_id = next_images[reg_trial];
+            const Image& next_image = reconstruction.Image(next_image_id);
 
-      (*log_file_ptr_) << std::endl;
+            // next_image.point3D_visibility_pyramid_
+            PrintHeading1(StringPrintf("Registering image #%d (%d)", next_image_id,
+                                    reconstruction.NumRegImages() + 1));
+            // new add
+            std::cout << "Registering image " << next_image.Name() << std::endl;
 
-      const size_t max_model_overlap =
-          static_cast<size_t>(options_->max_model_overlap);
-      if (mapper.NumSharedRegImages() >= max_model_overlap) {
-        break;
-      }
+            std::cout << StringPrintf("  => Image sees %d / %d points",
+                                    next_image.NumVisiblePoints3D(),
+                                    next_image.NumObservations())
+                    << std::endl;
 
-      // If no image could be registered, try a single final global iterative
-      // bundle adjustment and try again to register one image. If this fails
-      // once, then exit the incremental mapping.
-      // 如果没有图像可以被配准，尝试一个单一的最终全局迭代BA，并再次尝试配准一个图像。如果在失败一次，则退出增量建图。
-      if (!reg_next_success && prev_reg_next_success) {
-        reg_next_success = true;
-        prev_reg_next_success = false;
-        IterativeGlobalRefinement(*options_, &mapper);
-      } else {
-        prev_reg_next_success = reg_next_success;
-      }
+            reg_next_success =
+                mapper.RegisterNextImage(options_->Mapper(), next_image_id);
+            
+
+            if (reg_next_success) {
+                // new add
+                std::cout << "  => reg_next_success " << std::endl;
+                TriangulateImage(*options_, next_image, &mapper);
+                IterativeLocalRefinement(*options_, next_image_id, &mapper);
+                // new add
+                std::cout << "NumRegImages(): " << reconstruction.NumRegImages() << ", NumPoints3D(): " << reconstruction.NumPoints3D() << std::endl;
+                // IterativeGlobalRefinement
+                if (reconstruction.NumRegImages() >=
+                        options_->ba_global_images_ratio * ba_prev_num_reg_images ||
+                    reconstruction.NumRegImages() >=
+                        options_->ba_global_images_freq + ba_prev_num_reg_images ||
+                    reconstruction.NumPoints3D() >=
+                        options_->ba_global_points_ratio * ba_prev_num_points ||
+                    reconstruction.NumPoints3D() >=
+                        options_->ba_global_points_freq + ba_prev_num_points) {
+                    IterativeGlobalRefinement(*options_, &mapper);
+                    ba_prev_num_points = reconstruction.NumPoints3D();
+                    ba_prev_num_reg_images = reconstruction.NumRegImages();
+                }
+
+                if (options_->extract_colors) {
+                    ExtractColors(image_path_, next_image_id, &reconstruction);
+                }
+
+                if (options_->snapshot_images_freq > 0 &&
+                    reconstruction.NumRegImages() >=
+                        options_->snapshot_images_freq +
+                            snapshot_prev_num_reg_images) {
+                    snapshot_prev_num_reg_images = reconstruction.NumRegImages();
+                    WriteSnapshot(reconstruction, options_->snapshot_path);
+                }
+
+                Callback(NEXT_IMAGE_REG_CALLBACK);
+                // 每次注册成功后，都会先退出这个循环再尝试下一个图像
+                break;
+            } else {
+                std::cout << "  => Could not register, trying another image."
+                            << std::endl;
+
+                // If initial pair fails to continue for some time,
+                // abort and try different initial pair.
+                // 如果初始对持续一段时间未能继续，就放弃并尝试不同的初始对。
+                const size_t kMinNumInitialRegTrials = 30;
+                if (reg_trial >= kMinNumInitialRegTrials &&
+                    reconstruction.NumRegImages() <
+                        static_cast<size_t>(options_->min_model_size)) {
+                    break;
+                }
+            }
+            
+        }
+
+            const size_t max_model_overlap =
+                static_cast<size_t>(options_->max_model_overlap);
+            if (mapper.NumSharedRegImages() >= max_model_overlap) {
+                break;
+            }
+
+            // If no image could be registered, try a single final global iterative
+            // bundle adjustment and try again to register one image. If this fails
+            // once, then exit the incremental mapping.
+            // 如果没有图像可以被配准，尝试一个单一的最终全局迭代BA，并再次尝试配准一个图像。如果在失败一次，则退出增量建图。
+            if (!reg_next_success && prev_reg_next_success) {
+                reg_next_success = true;
+                prev_reg_next_success = false;
+                IterativeGlobalRefinement(*options_, &mapper);
+            } else {
+                prev_reg_next_success = reg_next_success;
+            }
+        }
+
+        if (IsStopped()) {
+            const bool kDiscardReconstruction = false;
+            mapper.EndReconstruction(kDiscardReconstruction);
+            break;
+        }
+
+        // Only run final global BA, if last incremental BA was not global.
+        // 如果最后的增量BA不是全局，只运行最终的全局BA
+        if (reconstruction.NumRegImages() >= 2 &&
+            reconstruction.NumRegImages() != ba_prev_num_reg_images &&
+            reconstruction.NumPoints3D() != ba_prev_num_points) {
+            IterativeGlobalRefinement(*options_, &mapper);
+        }
+
+        // If the total number of images is small then do not enforce the minimum
+        // model size so that we can reconstruct small image collections.
+        // 如果图像的总数很小，那么不强制要求最小模型大小，以便我们可以建立小型图像集合
+        const size_t min_model_size =
+            std::min(database_cache_.NumImages(),
+                    static_cast<size_t>(options_->min_model_size));
+        if ((options_->multiple_models &&
+            reconstruction.NumRegImages() < min_model_size) ||
+            reconstruction.NumRegImages() == 0) {
+            mapper.EndReconstruction(kDiscardReconstruction);
+            reconstruction_manager_->Delete(reconstruction_idx);
+        } else {
+            const bool kDiscardReconstruction = false;
+            mapper.EndReconstruction(kDiscardReconstruction);
+        }
+
+        Callback(LAST_IMAGE_REG_CALLBACK);
+
+        const size_t max_num_models = static_cast<size_t>(options_->max_num_models);
+        if (initial_reconstruction_given || !options_->multiple_models ||
+            reconstruction_manager_->Size() >= max_num_models ||
+            mapper.NumTotalRegImages() >= database_cache_.NumImages() - 1) {
+            break;
+        }
     }
-
-    if (IsStopped()) {
-      const bool kDiscardReconstruction = false;
-      mapper.EndReconstruction(kDiscardReconstruction);
-      break;
-    }
-
-    // Only run final global BA, if last incremental BA was not global.
-    // 如果最后的增量BA不是全局，只运行最终的全局BA
-    if (reconstruction.NumRegImages() >= 2 &&
-        reconstruction.NumRegImages() != ba_prev_num_reg_images &&
-        reconstruction.NumPoints3D() != ba_prev_num_points) {
-      IterativeGlobalRefinement(*options_, &mapper);
-    }
-
-    // If the total number of images is small then do not enforce the minimum
-    // model size so that we can reconstruct small image collections.
-    // 如果图像的总数很小，那么不强制要求最小模型大小，以便我们可以建立小型图像集合
-    const size_t min_model_size =
-        std::min(database_cache_.NumImages(),
-                 static_cast<size_t>(options_->min_model_size));
-    if ((options_->multiple_models &&
-         reconstruction.NumRegImages() < min_model_size) ||
-        reconstruction.NumRegImages() == 0) {
-      mapper.EndReconstruction(kDiscardReconstruction);
-      reconstruction_manager_->Delete(reconstruction_idx);
-    } else {
-      const bool kDiscardReconstruction = false;
-      mapper.EndReconstruction(kDiscardReconstruction);
-    }
-
-    Callback(LAST_IMAGE_REG_CALLBACK);
-
-    const size_t max_num_models = static_cast<size_t>(options_->max_num_models);
-    if (initial_reconstruction_given || !options_->multiple_models ||
-        reconstruction_manager_->Size() >= max_num_models ||
-        mapper.NumTotalRegImages() >= database_cache_.NumImages() - 1) {
-      break;
-    }
-  }
 }
 
 }  // namespace colmap

@@ -249,13 +249,7 @@ class IncrementalMapper {
   // Clear the collection of changed 3D points.
   void ClearModifiedPoints3D();
 
-  void SetLogFilePtr(std::ofstream* log_file_ptr) {
-    log_file_ptr_ = log_file_ptr;
-  };
-
  private:
-  std::ofstream* log_file_ptr_;
-
   // Find seed images for incremental reconstruction. Suitable seed images have
   // a large number of correspondences and have camera calibration priors. The
   // returned list is ordered such that most suitable images are in the front.

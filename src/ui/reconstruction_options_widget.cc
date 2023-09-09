@@ -47,6 +47,7 @@ MapperGeneralOptionsWidget::MapperGeneralOptionsWidget(QWidget* parent,
   AddOptionInt(&options->mapper->min_num_matches, "min_num_matches");
   AddOptionBool(&options->mapper->ignore_watermarks, "ignore_watermarks");
   AddOptionDirPath(&options->mapper->snapshot_path, "snapshot_path");
+  AddOptionDirPath(&options->mapper->log_file_path, "log_file_path");
   AddOptionInt(&options->mapper->snapshot_images_freq, "snapshot_images_freq",
                0);
 }

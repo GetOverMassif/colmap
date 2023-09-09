@@ -144,6 +144,8 @@ struct IncrementalMapperOptions {
   std::string snapshot_path = "";
   int snapshot_images_freq = 0;
 
+  std::string log_file_path = "";
+
   // Which images to reconstruct. If no images are specified, all images will
   // be reconstructed by default.
   // 重建哪些图像。如果未指定图像，则默认情况下将重建所有图像。
@@ -182,21 +184,17 @@ class IncrementalMapperController : public Thread {
     NEXT_IMAGE_REG_CALLBACK,
     LAST_IMAGE_REG_CALLBACK,
   };
-
+  
   IncrementalMapperController(const IncrementalMapperOptions* options,
                               const std::string& image_path,
                               const std::string& database_path,
                               ReconstructionManager* reconstruction_manager);
-  void SetLogFilePtr(std::ofstream* log_file_ptr) {
-    log_file_ptr_ = log_file_ptr;
-  };
 
  private:
   void Run();
   bool LoadDatabase();
   void Reconstruct(const IncrementalMapper::Options& init_mapper_options);
 
-  std::ofstream* log_file_ptr_;
   const IncrementalMapperOptions* options_;
   const std::string image_path_;
   const std::string database_path_;

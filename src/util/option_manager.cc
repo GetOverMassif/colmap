@@ -537,6 +537,7 @@ void OptionManager::AddMapperOptions() {
   AddAndRegisterDefaultOption("Mapper.ba_local_max_refinement_change",
                               &mapper->ba_local_max_refinement_change);
   AddAndRegisterDefaultOption("Mapper.snapshot_path", &mapper->snapshot_path);
+  AddAndRegisterDefaultOption("Mapper.log_file_path", &mapper->log_file_path);
   AddAndRegisterDefaultOption("Mapper.snapshot_images_freq",
                               &mapper->snapshot_images_freq);
   AddAndRegisterDefaultOption("Mapper.fix_existing_images",
