@@ -454,13 +454,20 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
     std::cout << "tri_points2D.size(): " << tri_points2D.size() \
         << ", abs_pose_min_num_inliers:" << static_cast<size_t>(options.abs_pose_min_num_inliers) << std::endl;
     std::cout << "tri_points2D[" << tri_points2D.size() << "] = [";
-    for (auto &point2D:tri_points2D) {
-        std::cout << "[" << std::setprecision(4) << point2D[0] << "," << point2D[1] << "],";
+    if (tri_points2D.size()){
+        std::cout << "[" << std::setprecision(4) << tri_points2D[0][0] << "," << tri_points2D[0][1] << "]";
+    }
+    for (int i = 1; i < tri_points2D.size(); i++) {
+        std::cout << ",[" << std::setprecision(4) << tri_points2D[i][0] << "," << tri_points2D[i][1] << "]";
     }
     std::cout << "]" << std::endl;
+
     std::cout << "tri_points3D[" << tri_points3D.size() << "] = [";
-    for (auto &point3D:tri_points3D) {
-        std::cout << "[" << std::setprecision(4) << point3D[0] << "," << point3D[1] << "," << point3D[2] << "],";
+    if (tri_points3D.size()){
+        std::cout << "[" << std::setprecision(4) << tri_points3D[0][0] << "," << tri_points3D[0][1] << "," << tri_points3D[0][2] << "]";
+    }
+    for (int i = 1; i < tri_points3D.size(); i++) {
+        std::cout << ",[" << std::setprecision(4) << tri_points3D[i][0] << "," << tri_points3D[i][1] << "," << tri_points3D[i][2] << "]";
     }
     std::cout << "]" << std::endl;
     

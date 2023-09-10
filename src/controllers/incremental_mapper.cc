@@ -102,30 +102,30 @@ void IterativeLocalRefinement(const IncrementalMapperOptions& options,
 
 void IterativeGlobalRefinement(const IncrementalMapperOptions& options,
                                IncrementalMapper* mapper) {
-  PrintHeading1("Retriangulation");
-  CompleteAndMergeTracks(options, mapper);
-  std::cout << "  => Retriangulated observations: "
-            << mapper->Retriangulate(options.Triangulation()) << std::endl;
+    PrintHeading1("Retriangulation");
+    CompleteAndMergeTracks(options, mapper);
+    std::cout << "  => Retriangulated observations: "
+                << mapper->Retriangulate(options.Triangulation()) << std::endl;
 
-  for (int i = 0; i < options.ba_global_max_refinements; ++i) {
-    const size_t num_observations =
-        mapper->GetReconstruction().ComputeNumObservations();
-    size_t num_changed_observations = 0;
-    AdjustGlobalBundle(options, mapper);
-    num_changed_observations += CompleteAndMergeTracks(options, mapper);
-    num_changed_observations += FilterPoints(options, mapper);
-    const double changed =
-        num_observations == 0
-            ? 0
-            : static_cast<double>(num_changed_observations) / num_observations;
-    std::cout << StringPrintf("  => Changed observations: %.6f", changed)
-              << std::endl;
-    if (changed < options.ba_global_max_refinement_change) {
-      break;
+    for (int i = 0; i < options.ba_global_max_refinements; ++i) {
+        const size_t num_observations =
+            mapper->GetReconstruction().ComputeNumObservations();
+        size_t num_changed_observations = 0;
+        AdjustGlobalBundle(options, mapper);
+        num_changed_observations += CompleteAndMergeTracks(options, mapper);
+        num_changed_observations += FilterPoints(options, mapper);
+        const double changed =
+            num_observations == 0
+                ? 0
+                : static_cast<double>(num_changed_observations) / num_observations;
+        std::cout << StringPrintf("  => Changed observations: %.6f", changed)
+                << std::endl;
+        if (changed < options.ba_global_max_refinement_change) {
+            break;
+        }
     }
-  }
 
-  FilterImages(options, mapper);
+    FilterImages(options, mapper);
 }
 
 void ExtractColors(const std::string& image_path, const image_t image_id,
