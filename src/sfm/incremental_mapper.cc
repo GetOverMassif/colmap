@@ -457,7 +457,7 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
     if (tri_points2D.size()){
         std::cout << "[" << std::setprecision(4) << tri_points2D[0][0] << "," << tri_points2D[0][1] << "]";
     }
-    for (int i = 1; i < tri_points2D.size(); i++) {
+    for (size_t i = 1; i < tri_points2D.size(); i++) {
         std::cout << ",[" << std::setprecision(4) << tri_points2D[i][0] << "," << tri_points2D[i][1] << "]";
     }
     std::cout << "]" << std::endl;
@@ -466,7 +466,7 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
     if (tri_points3D.size()){
         std::cout << "[" << std::setprecision(4) << tri_points3D[0][0] << "," << tri_points3D[0][1] << "," << tri_points3D[0][2] << "]";
     }
-    for (int i = 1; i < tri_points3D.size(); i++) {
+    for (size_t i = 1; i < tri_points3D.size(); i++) {
         std::cout << ",[" << std::setprecision(4) << tri_points3D[i][0] << "," << tri_points3D[i][1] << "," << tri_points3D[i][2] << "]";
     }
     std::cout << "]" << std::endl;

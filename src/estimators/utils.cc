@@ -29,6 +29,7 @@
 //
 // Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
 
+#include <iomanip>
 #include "estimators/utils.h"
 
 #include "util/logging.h"
@@ -135,7 +136,7 @@ void ComputeSquaredReprojectionError(
     const std::vector<Eigen::Vector3d>& points3D,
     const Eigen::Matrix3x4d& proj_matrix, std::vector<double>* residuals) {
   CHECK_EQ(points2D.size(), points3D.size());
-
+  std::cout << "  => ComputeSquaredReprojectionError: [";
   residuals->resize(points2D.size());
 
   // Note that this code might not be as nice as Eigen expressions,
@@ -174,11 +175,14 @@ void ComputeSquaredReprojectionError(
       const double dx_0 = x_0 - px_0 * inv_px_2;
       const double dx_1 = x_1 - px_1 * inv_px_2;
 
+      std::cout << std::setprecision(4) << "[" << px_0 * inv_px_2 << "," << px_1 * inv_px_2 << "],";
+
       (*residuals)[i] = dx_0 * dx_0 + dx_1 * dx_1;
     } else {
       (*residuals)[i] = std::numeric_limits<double>::max();
     }
   }
+  std::cout << "]" << std::endl;
 }
 
 }  // namespace colmap

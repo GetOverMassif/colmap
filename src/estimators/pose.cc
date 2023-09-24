@@ -30,6 +30,7 @@
 // Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
 
 #include "estimators/pose.h"
+#include <iomanip>
 
 #include "base/camera_models.h"
 #include "base/cost_functions.h"
@@ -53,25 +54,34 @@ void EstimateAbsolutePoseKernel(const Camera& camera,
                                 const std::vector<Eigen::Vector3d>& points3D,
                                 const RANSACOptions& options,
                                 AbsolutePoseRANSAC::Report* report) {
-  // Scale the focal length by the given factor.
-  Camera scaled_camera = camera;
-  const std::vector<size_t>& focal_length_idxs = camera.FocalLengthIdxs();
-  for (const size_t idx : focal_length_idxs) {
-    scaled_camera.Params(idx) *= focal_length_factor;
-  }
+    // Scale the focal length by the given factor.
+    Camera scaled_camera = camera;
+    const std::vector<size_t>& focal_length_idxs = camera.FocalLengthIdxs();
+    for (const size_t idx : focal_length_idxs) {
+        scaled_camera.Params(idx) *= focal_length_factor;
+    }
 
-  // Normalize image coordinates with current camera hypothesis.
-  std::vector<Eigen::Vector2d> points2D_N(points2D.size());
-  for (size_t i = 0; i < points2D.size(); ++i) {
-    points2D_N[i] = scaled_camera.ImageToWorld(points2D[i]);
-  }
+    // Normalize image coordinates with current camera hypothesis.
+    std::vector<Eigen::Vector2d> points2D_N(points2D.size());
+    for (size_t i = 0; i < points2D.size(); ++i) {
+        points2D_N[i] = scaled_camera.ImageToWorld(points2D[i]);
+    }
 
-  // Estimate pose for given focal length.
-  auto custom_options = options;
-  custom_options.max_error =
-      scaled_camera.ImageToWorldThreshold(options.max_error);
-  AbsolutePoseRANSAC ransac(custom_options);
-  *report = ransac.Estimate(points2D_N, points3D);
+    std::cout << "points2D_N[" << points2D_N.size() << "] = [";
+    if (points2D_N.size()){
+        std::cout << "[" << std::setprecision(4) << points2D_N[0][0] << "," << points2D_N[0][1] << "]";
+    }
+    for (size_t i = 1; i < points2D_N.size(); i++) {
+        std::cout << ",[" << std::setprecision(4) << points2D_N[i][0] << "," << points2D_N[i][1] << "]";
+    }
+    std::cout << "]" << std::endl;
+
+    // Estimate pose for given focal length.
+    auto custom_options = options;
+    custom_options.max_error =
+        scaled_camera.ImageToWorldThreshold(options.max_error);
+    AbsolutePoseRANSAC ransac(custom_options);
+    *report = ransac.Estimate(points2D_N, points3D);
 }
 
 }  // namespace

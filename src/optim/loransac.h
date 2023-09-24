@@ -36,6 +36,7 @@
 #include <random>
 #include <stdexcept>
 #include <vector>
+#include <iomanip>
 
 #include "optim/random_sampler.h"
 #include "optim/ransac.h"
@@ -231,19 +232,41 @@ LORANSAC<Estimator, LocalEstimator, SupportMeasurer, Sampler>::Estimate(
   // Determine inlier mask. Note that this calculates the residuals for the
   // best model twice, but saves to copy and fill the inlier mask for each
   // evaluated model. Some benchmarking revealed that this approach is faster.
+  std::cout << "Ready to estimate residuals" << std::endl;
 
   if (best_model_is_local) {
     local_estimator.Residuals(X, Y, report.model, &residuals);
   } else {
     estimator.Residuals(X, Y, report.model, &residuals);
   }
+  
+  std::cout << "max_residual = " << std::setprecision(4) << max_residual << std::endl;
+  std::cout << "residuals[" << residuals.size() << "] = [" << std::setprecision(4) << residuals[0];
+  for (size_t i = 1; i < residuals.size(); i++) {
+    std::cout << "," << std::setprecision(4) << residuals[i];
+  }
+  std::cout << "]" << std::endl;
 
   CHECK_EQ(residuals.size(), num_samples);
 
   report.inlier_mask.resize(num_samples);
+  size_t inlier_cnt = 0;
+  std::vector<size_t> inlier_idxs(num_samples); 
+  std::cout << "inlier_mask = [";
   for (size_t i = 0; i < residuals.size(); ++i) {
     report.inlier_mask[i] = residuals[i] <= max_residual;
+    if (report.inlier_mask[i]) {
+        std::cout << "," << i;
+        inlier_idxs[inlier_cnt++] = i;
+    }
   }
+  std::cout << "]" << std::endl;
+
+  std::cout << "inliers[" << inlier_cnt << "] = [";
+  for (size_t i = 0; i < inlier_cnt; ++i) {
+    std::cout << "," << std::setprecision(4) << residuals[inlier_idxs[i]];
+  }
+  std::cout << std::endl;
 
   return report;
 }
